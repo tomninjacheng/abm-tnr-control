@@ -1,0 +1,35 @@
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- Editors ---
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- NetLogo backups & temp files ---
+*.nlogo.bak
+*.nlogo3d.bak
+*.tmp
+
+# --- BehaviorSpace / experiment output ---
+experiments/
+results/
+output/
+*.csv
+*.tsv
+*.xls
+*.xlsx
+
+# --- Generated plots / figures ---
+*.png
+*.jpg
+*.jpeg
+*.pdf
+!docs/**/*.png
+
+# --- Environment / local config ---
+.env
+.env.local
