@@ -1,0 +1,933 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model version="NetLogo 7.0.4" snapToGrid="false">
+  <code><![CDATA[;; ================================================================
+;; Cat Management MVP — V1
+;; Spec: ODD_protocol_final.md
+;; Research question (RQ-A): at matched monthly intervention effort,
+;; which strategy (TNR or cull) produces the lowest cumulative
+;; prey-years lost compared to a no-cat baseline over 10 years?
+;; ================================================================
+
+globals [
+  ;; --- fixed model parameters (set in setup-globals; not controlled by sliders) ---
+  territory-radius        ;; cells; cat food-search range (default 3)
+  food-consumption        ;; units per cat per month (default 1.0)
+  predation-radius        ;; cells; cat kill range (default 1)
+  prey-search-radius      ;; cells; prey random walk range (default 2)
+
+  p-birth                 ;; monthly birth probability per intact adult female (default 0.17)
+  litter-size             ;; fixed cat litter size (default 4)
+  d-juvenile-cat          ;; monthly death prob for cat age < 6 (default 0.35)
+  d-adult-cat             ;; monthly death prob for cat age >= 6 (default 0.025)
+
+  p-prey-birth            ;; base monthly birth probability per adult female prey (default 0.25)
+  prey-litter-size        ;; fixed prey litter size (default 2)
+  d-juvenile-prey         ;; monthly death prob for prey age < 2 (default 0.30)
+  d-adult-prey            ;; monthly death prob for prey age >= 2 (default 0.05)
+
+  burn-in-months          ;; number of ticks before intervention starts (default 12)
+
+  ;; --- internal state / counters ---
+  current-immigration-rate
+  immigrants-this-month
+  prey-deaths-this-month
+  cumulative-prey-deaths
+  cumulative-tnr-count
+  cumulative-cull-count
+  prey-years-lost
+  prey-baseline
+]
+
+breed [cats cat]
+breed [preys prey]
+
+cats-own [
+  home-patch
+  sex       ;; "F" or "M"
+  age       ;; months
+  status    ;; "intact" or "sterilised"
+]
+
+preys-own [
+  age       ;; months
+]
+
+patches-own [
+  food-capacity   ;; static (set at setup, scaled by food-multiplier slider)
+  food-current    ;; dynamic (depleted by feeding, restored by regen)
+]
+
+;; ================================================================
+;; SETUP
+;; ================================================================
+
+to setup
+  clear-all
+  setup-globals
+  setup-patches
+  setup-cats
+  setup-preys
+  reset-ticks
+end
+
+to setup-globals
+  ;; Fixed parameters absorbed into "effective" rates (see ODD §4 Set B rationale)
+  set territory-radius 3
+  set food-consumption 1.0
+  set predation-radius 1
+  set prey-search-radius 2
+
+  set p-birth 0.17
+  set litter-size 4
+  set d-juvenile-cat 0.35
+  set d-adult-cat 0.025
+
+  set p-prey-birth 0.25
+  set prey-litter-size 2
+  set d-juvenile-prey 0.30
+  set d-adult-prey 0.05
+
+  set burn-in-months 12
+
+  ;; Internal counters
+  set current-immigration-rate 0
+  set immigrants-this-month 0
+  set prey-deaths-this-month 0
+  set cumulative-prey-deaths 0
+  set cumulative-tnr-count 0
+  set cumulative-cull-count 0
+  set prey-years-lost 0
+  set prey-baseline initial-prey-population
+end
+
+to setup-patches
+  ;; Four-tier food distribution:
+  ;; ~40% zero (food deserts — parks, roads, water), ~40% low (0.3u, residential background),
+  ;; ~15% mid (1.0u, mixed-use), ~5% high (2.0u, commercial zones with dumpsters).
+  ;; High cells cluster into 3 "commercial zones".
+  ask patches [ set food-capacity 0 ]
+
+  ;; Place 3 high-food clusters first (anchor the dumpster locations)
+  repeat 3 [
+    let center one-of patches
+    ask center [
+      ask patches in-radius 2 [
+        if random-float 1 < 0.6 [
+          set food-capacity 2.0
+        ]
+      ]
+    ]
+  ]
+
+  ;; Promote ~15% of remaining zero-cells to mid
+  ask n-of (floor (0.15 * count patches)) patches with [food-capacity = 0] [
+    set food-capacity 1.0
+  ]
+
+  ;; Promote ~40% of remaining zero-cells to low
+  ask n-of (floor (0.40 * count patches)) patches with [food-capacity = 0] [
+    set food-capacity 0.3
+  ]
+
+  ;; Remaining ~40% stay at zero food (food deserts).
+
+  ;; Apply the user-controlled food-multiplier (feeding-ban scenarios) and set colors.
+  ;; Use max = 3 in scale-color so high (2.0) cells are bright green, not white.
+  ask patches [
+    set food-capacity food-capacity * food-multiplier
+    set food-current food-capacity
+    set pcolor scale-color green food-capacity 0 (3 * food-multiplier)
+  ]
+end
+
+to setup-cats
+  create-cats initial-cat-population [
+    setxy random-xcor random-ycor
+    set home-patch patch-here
+    set sex ifelse-value (random-float 1 < 0.5) ["F"] ["M"]
+    set age 6 + random 43    ;; uniform 6..48 inclusive
+    set status "intact"
+    set shape "default"
+    set color yellow
+    set size 0.9
+  ]
+end
+
+to setup-preys
+  create-preys initial-prey-population [
+    setxy random-xcor random-ycor
+    set age 2 + random 35    ;; uniform 2..36
+    set shape "circle"
+    set color white
+    set size 0.6
+  ]
+end
+
+;; ================================================================
+;; GO — one monthly tick, 7 phases per ODD §3
+;; ================================================================
+
+to go
+  cats-move-and-feed              ;; Phase 1
+  immigrate                       ;; Phase 2 (reads post-feeding, pre-regen food)
+  regenerate-food                 ;; Phase 3
+  prey-move                       ;; Phase 4
+  predate                         ;; Phase 5
+  cats-reproduce                  ;; Phase 6a
+  cats-age-and-die                ;; Phase 6a
+  preys-reproduce                 ;; Phase 6b
+  preys-age-and-die               ;; Phase 6b
+  if ticks >= burn-in-months [ intervene ]   ;; Phase 7 — burn-in guard
+  tally                           ;; Phase 8
+  tick
+  if ticks >= 120 [ stop ]
+end
+
+to tally
+  let deficit max (list 0 (prey-baseline - count preys))
+  set prey-years-lost prey-years-lost + deficit
+end
+
+;; ================================================================
+;; PHASE PROCEDURES
+;; ================================================================
+
+;; Phase 1: cats move toward best food in radius, then feed
+to cats-move-and-feed
+  ask cats [
+    let candidates patches in-radius territory-radius
+    let target max-one-of candidates [food-current]
+    if target != nobody [ move-to target ]
+    ask patch-here [
+      set food-current max (list 0 (food-current - food-consumption))
+    ]
+  ]
+end
+
+;; Phase 2: Poisson immigration; mean scales with available food
+to immigrate
+  let total-cap sum [food-capacity] of patches
+  let total-cur sum [food-current] of patches
+  ifelse total-cap <= 0 [
+    set current-immigration-rate 0
+  ] [
+    set current-immigration-rate base-immigration * (total-cur / total-cap)
+  ]
+  let n-new random-poisson current-immigration-rate
+  set immigrants-this-month n-new
+  let edges patches with [
+    pxcor = min-pxcor or pxcor = max-pxcor or
+    pycor = min-pycor or pycor = max-pycor
+  ]
+  create-cats n-new [
+    move-to one-of edges
+    set home-patch patch-here
+    set sex ifelse-value (random-float 1 < 0.5) ["F"] ["M"]
+    set age 12 + random 25    ;; uniform 12..36
+    set status "intact"
+    set shape "default"
+    set color yellow
+    set size 0.9
+  ]
+end
+
+;; Phase 3: cells recover toward capacity
+to regenerate-food
+  ask patches [
+    set food-current min (list food-capacity (food-current + food-regen-rate * food-capacity))
+    set pcolor scale-color green food-current 0 (3 * food-multiplier)
+  ]
+end
+
+;; Phase 4: prey random walk within radius
+to prey-move
+  ask preys [
+    move-to one-of patches in-radius prey-search-radius
+  ]
+end
+
+;; Phase 5: binary presence predation. Only adult cats (age >= 6) threaten prey.
+to predate
+  set prey-deaths-this-month 0
+  ask preys [
+    let adults-nearby cats in-radius predation-radius with [age >= 6]
+    if any? adults-nearby [
+      if random-float 1 < p-predation [
+        set prey-deaths-this-month prey-deaths-this-month + 1
+        set cumulative-prey-deaths cumulative-prey-deaths + 1
+        die
+      ]
+    ]
+  ]
+end
+
+;; Phase 6a — cat reproduction (intact adult females only)
+to cats-reproduce
+  ask cats with [sex = "F" and age >= 6 and status = "intact"] [
+    if random-float 1 < p-birth [
+      hatch litter-size [
+        set age 0
+        set status "intact"
+        set sex ifelse-value (random-float 1 < 0.5) ["F"] ["M"]
+        set home-patch [patch-here] of myself
+        set shape "default"
+        set color yellow
+        set size 0.5
+      ]
+    ]
+  ]
+end
+
+;; Phase 6a — age all cats by 1 month, then roll age-class mortality on NEW age
+to cats-age-and-die
+  ask cats [
+    set age age + 1
+    let p-die ifelse-value (age < 6) [d-juvenile-cat] [d-adult-cat]
+    if random-float 1 < p-die [ die ]
+  ]
+end
+
+;; Phase 6b — logistic prey reproduction (half of adults treated as reproductive females)
+to preys-reproduce
+  let n-prey count preys
+  let factor max (list 0 (1 - (n-prey / K-prey)))
+  ask preys with [age >= 2] [
+    if random-float 1 < 0.5 [          ;; implicit 50/50 sex ratio for prey
+      if random-float 1 < (p-prey-birth * factor) [
+        hatch prey-litter-size [
+          set age 0
+          set shape "circle"
+          set color white
+          set size 0.5
+        ]
+      ]
+    ]
+  ]
+end
+
+;; Phase 6b — age prey, then roll age-class mortality on NEW age
+to preys-age-and-die
+  ask preys [
+    set age age + 1
+    let p-die ifelse-value (age < 2) [d-juvenile-prey] [d-adult-prey]
+    if random-float 1 < p-die [ die ]
+  ]
+end
+
+;; Phase 7 — intervention. Only intact adults are eligible.
+to intervene
+  let pool cats with [status = "intact" and age >= 6]
+  if not any? pool [ stop ]
+  let n-take min (list cats-processed-per-month count pool)
+  let selected n-of n-take pool
+
+  if strategy = "tnr" [
+    ask selected [
+      set status "sterilised"
+      set color red
+    ]
+    set cumulative-tnr-count cumulative-tnr-count + n-take
+  ]
+  if strategy = "cull" [
+    ask selected [ die ]
+    set cumulative-cull-count cumulative-cull-count + n-take
+  ]
+end
+
+;; ================================================================
+;; REPORTERS used by monitors
+;; ================================================================
+to-report count-adult-intact
+  report count cats with [age >= 6 and status = "intact"]
+end
+
+to-report count-adult-sterilised
+  report count cats with [age >= 6 and status = "sterilised"]
+end
+
+to-report count-kittens
+  report count cats with [age < 6]
+end
+
+;; ================================================================
+;; TESTS — run from Command Center. Each prints PASS or raises an error.
+;; ================================================================
+
+to run-all-tests
+  print "========= Running all tests ========="
+  test-patch-food-distribution
+  test-agent-setup
+  test-cats-move-and-feed
+  test-regenerate-food
+  test-immigrate
+  test-prey-move
+  test-predate
+  test-cats-reproduce
+  test-cats-age-and-die
+  test-preys-reproduce
+  test-preys-age-and-die
+  test-intervene
+  test-go-runs-without-error
+  print "========= ALL TESTS PASSED ========="
+end
+
+to test-patch-food-distribution
+  clear-all
+  setup-globals
+  setup-patches
+  let total-patches count patches
+  let zero count patches with [food-capacity = 0]
+  let low  count patches with [food-capacity = 0.3 * food-multiplier]
+  let mid  count patches with [food-capacity = 1.0 * food-multiplier]
+  let high count patches with [food-capacity = 2.0 * food-multiplier]
+  print (word "  zero=" zero " low=" low " mid=" mid " high=" high " total=" total-patches)
+  ;; Targets (approximate; cluster placement is stochastic):
+  ;;   zero ~40%, low ~40%, mid ~15%, high ~5%
+  ;; Use generous tolerance (±5%) since cluster placement can overlap.
+  let tol 0.05 * total-patches
+  if abs (zero - 0.40 * total-patches) > tol [ error "FAIL: zero tier off" ]
+  if abs (low  - 0.40 * total-patches) > tol [ error "FAIL: low tier off" ]
+  if abs (mid  - 0.15 * total-patches) > tol [ error "FAIL: mid tier off" ]
+  if abs (high - 0.05 * total-patches) > tol [ error "FAIL: high tier off" ]
+  if any? patches with [food-current != food-capacity] [
+    error "FAIL: food-current != food-capacity after setup"
+  ]
+  print "  PASS: test-patch-food-distribution"
+end
+
+to test-agent-setup
+  setup
+  if count cats != initial-cat-population [ error "FAIL: wrong cat count" ]
+  if count preys != initial-prey-population [ error "FAIL: wrong prey count" ]
+  let n-female count cats with [sex = "F"]
+  let imbalance abs (n-female - 0.5 * count cats)
+  if imbalance > 30 [ error "FAIL: cat sex ratio too skewed" ]
+  if any? cats with [status != "intact"] [ error "FAIL: non-intact cats at setup" ]
+  if any? cats with [age < 6 or age > 48] [ error "FAIL: cat age out of range" ]
+  if any? preys with [age < 2 or age > 36] [ error "FAIL: prey age out of range" ]
+  print "  PASS: test-agent-setup"
+end
+
+to test-cats-move-and-feed
+  setup
+  ask patch 10 10 [ set food-capacity 2.0 set food-current 2.0 ]
+  ask patch 11 10 [ set food-capacity 0.3 set food-current 0.3 ]
+  ask cats [ die ]
+  create-cats 1 [
+    setxy 11 10
+    set home-patch patch 11 10
+    set sex "F" set age 24 set status "intact"
+    set color yellow set shape "default"
+  ]
+  let food-before [food-current] of patch 10 10
+  cats-move-and-feed
+  let the-cat one-of cats
+  if [patch-here] of the-cat != patch 10 10 [
+    error (word "FAIL: cat did not move to best-food patch. At: " [patch-here] of the-cat)
+  ]
+  if [food-current] of patch 10 10 >= food-before [
+    error "FAIL: patch food did not decrease after feeding"
+  ]
+  print "  PASS: test-cats-move-and-feed"
+end
+
+to test-regenerate-food
+  setup
+  ask patches [ set food-current 0 ]
+  regenerate-food
+  if any? patches with [abs (food-current - food-regen-rate * food-capacity) > 0.001] [
+    error "FAIL: regen amount mismatch"
+  ]
+  regenerate-food
+  regenerate-food
+  if any? patches with [food-current > food-capacity + 0.001] [
+    error "FAIL: regen exceeded capacity"
+  ]
+  if any? patches with [food-current < food-capacity - 0.001] [
+    error "FAIL: regen did not reach capacity after 3 cycles"
+  ]
+  print "  PASS: test-regenerate-food"
+end
+
+to test-immigrate
+  setup
+  immigrate
+  print (word "  immigration rate at full food: " current-immigration-rate)
+  if abs (current-immigration-rate - base-immigration) > 0.01 [
+    error "FAIL: rate at full food does not match base-immigration"
+  ]
+  ask patches [ set food-current 0 ]
+  immigrate
+  if current-immigration-rate != 0 [
+    error "FAIL: rate at zero food should be 0"
+  ]
+  ask patches [ set food-current food-capacity / 2 ]
+  immigrate
+  if abs (current-immigration-rate - base-immigration / 2) > 0.01 [
+    error "FAIL: rate at half food should be ~half of base"
+  ]
+  print "  PASS: test-immigrate"
+end
+
+to test-prey-move
+  setup
+  ask preys [ die ]
+  create-preys 1 [
+    setxy 25 25
+    set age 10
+    set shape "circle" set color white set size 0.6
+  ]
+  let the-prey one-of preys
+  let before [patch-here] of the-prey
+  prey-move
+  ;; prey must still be within prey-search-radius of its starting patch
+  ;; (distance measured from the-prey's current position to `before`)
+  if [distancexy [pxcor] of before [pycor] of before] of the-prey > prey-search-radius + 0.01 [
+    error "FAIL: prey moved too far"
+  ]
+  print "  PASS: test-prey-move"
+end
+
+to test-predate
+  setup
+  ask cats [ die ]
+  ask preys [ die ]
+
+  ;; Scenario A — no cat, prey survives
+  create-preys 1 [ setxy 10 10 set age 10 set shape "circle" set color white ]
+  predate
+  if count preys != 1 [ error "FAIL: prey died with no cat present" ]
+
+  ;; Scenario B — adult cat near prey, statistical kill rate
+  create-cats 1 [
+    setxy 10 10 set age 24 set status "intact" set sex "F"
+    set home-patch patch-here set shape "default" set color yellow
+  ]
+  let n-trials 500
+  let n-dead 0
+  repeat n-trials [
+    ask preys [ die ]
+    create-preys 1 [ setxy 10 10 set age 10 set shape "circle" ]
+    set prey-deaths-this-month 0
+    predate
+    set n-dead (n-dead + prey-deaths-this-month)
+  ]
+  let observed (n-dead / n-trials)
+  print (word "  observed kill rate: " observed " (expected " p-predation ")")
+  if abs (observed - p-predation) > 0.04 [
+    error "FAIL: kill rate too far from p-predation (3σ bound)"
+  ]
+
+  ;; Scenario C — kitten (<6mo) should NOT trigger predation
+  ask cats [ die ]
+  create-cats 1 [
+    setxy 10 10 set age 3 set status "intact" set sex "F"
+    set home-patch patch-here set shape "default" set color yellow
+  ]
+  set n-dead 0
+  repeat 500 [
+    ask preys [ die ]
+    create-preys 1 [ setxy 10 10 set age 10 set shape "circle" ]
+    set prey-deaths-this-month 0
+    predate
+    set n-dead (n-dead + prey-deaths-this-month)
+  ]
+  if n-dead > 20 [ error "FAIL: kittens should not kill prey" ]
+  print "  PASS: test-predate"
+end
+
+to test-cats-reproduce
+  setup
+  ask cats [ die ]
+  create-cats 1000 [
+    setxy random-xcor random-ycor
+    set home-patch patch-here
+    set sex "F" set age 24 set status "intact"
+    set shape "default" set color yellow
+  ]
+  cats-reproduce
+  let kittens count cats with [age = 0]
+  let expected 1000 * p-birth * litter-size
+  print (word "  kittens born: " kittens " (expected ~" expected ")")
+  if abs (kittens - expected) > 0.15 * expected [
+    error "FAIL: kitten count outside 15% band of expected"
+  ]
+  ask cats [ die ]
+  create-cats 500 [
+    set sex "M" set age 24 set status "intact"
+    set shape "default" set color yellow set home-patch patch-here
+  ]
+  cats-reproduce
+  if any? cats with [age = 0] [ error "FAIL: males produced offspring" ]
+  print "  PASS: test-cats-reproduce"
+end
+
+to test-cats-age-and-die
+  setup
+  ask cats [ die ]
+  create-cats 1000 [
+    setxy random-xcor random-ycor
+    set age 5 set status "intact" set sex "F"
+    set home-patch patch-here set shape "default" set color yellow
+  ]
+  cats-age-and-die
+  let survived count cats
+  let expected 1000 * (1 - d-adult-cat)
+  print (word "  age 5→6 survived: " survived " (expected adult-rate ~" expected ")")
+  if abs (survived - expected) > 0.03 * 1000 [
+    error "FAIL: age-boundary cats should use ADULT mortality (new age >= 6)"
+  ]
+  print "  PASS: test-cats-age-and-die"
+end
+
+to test-preys-reproduce
+  setup
+  ask preys [ die ]
+  create-preys K-prey [ set age 10 set shape "circle" ]
+  preys-reproduce
+  if any? preys with [age = 0] [
+    error "FAIL: births at N = K_prey should be zero"
+  ]
+  ask preys [ die ]
+  let saved-K K-prey
+  create-preys 500 [ set age 10 set shape "circle" ]
+  set K-prey 1000
+  let factor max (list 0 (1 - (count preys / K-prey)))
+  let n-adult-females 0.5 * count preys
+  let expected (n-adult-females * p-prey-birth * factor * prey-litter-size)
+  preys-reproduce
+  let births count preys with [age = 0]
+  print (word "  prey births at N=K/2: " births " (expected ~" expected ")")
+  set K-prey saved-K
+  if abs (births - expected) > 0.3 * expected [
+    error "FAIL: birth rate off"
+  ]
+  print "  PASS: test-preys-reproduce"
+end
+
+to test-preys-age-and-die
+  setup
+  ask preys [ die ]
+  create-preys 1000 [ set age 10 set shape "circle" ]
+  preys-age-and-die
+  let survived count preys
+  let expected 1000 * (1 - d-adult-prey)
+  print (word "  prey survived: " survived " (expected adult ~" expected ")")
+  if abs (survived - expected) > 0.03 * 1000 [
+    error "FAIL: prey adult mortality off"
+  ]
+  print "  PASS: test-preys-age-and-die"
+end
+
+to test-intervene
+  setup
+  ask cats [ die ]
+  create-cats 10 [
+    setxy random-xcor random-ycor
+    set home-patch patch-here
+    set sex "F" set age 24 set status "intact"
+    set shape "default" set color yellow
+  ]
+  set strategy "tnr"
+  set cats-processed-per-month 5
+  intervene
+  if count cats with [status = "sterilised"] != 5 [ error "FAIL: TNR count wrong" ]
+  if count cats with [status = "intact"] != 5 [ error "FAIL: TNR left count wrong" ]
+
+  ask cats [ die ]
+  create-cats 10 [
+    setxy 0 0 set home-patch patch 0 0
+    set sex "F" set age 24 set status "intact"
+    set shape "default" set color yellow
+  ]
+  set strategy "cull"
+  set cats-processed-per-month 5
+  intervene
+  if count cats != 5 [ error "FAIL: cull should remove 5 cats" ]
+
+  ask cats [ die ]
+  set cats-processed-per-month 5
+  set strategy "cull"
+  intervene
+  if count cats != 0 [ error "FAIL: intervene on empty pool should do nothing" ]
+
+  ask cats [ die ]
+  create-cats 5 [
+    set age 3 set status "intact" set sex "F"
+    set shape "default" set color yellow set home-patch patch-here
+  ]
+  set strategy "cull"
+  set cats-processed-per-month 5
+  intervene
+  if count cats != 5 [ error "FAIL: kittens should not be eligible for intervention" ]
+  print "  PASS: test-intervene"
+end
+
+to test-go-runs-without-error
+  setup
+  repeat 12 [ go ]
+  print (word "  after 12 ticks: cats=" count cats " preys=" count preys)
+  if ticks != 12 [ error "FAIL: tick counter not advancing" ]
+  print "  PASS: test-go-runs-without-error"
+end]]></code>
+  <widgets>
+    <view x="220" wrappingAllowedX="false" y="10" frameRate="30.0" minPycor="0" height="504" showTickCounter="true" patchSize="10.0" fontSize="10" wrappingAllowedY="false" width="504" tickCounterLabel="ticks" maxPycor="49" updateMode="0" maxPxcor="49" minPxcor="0"></view>
+    <button x="10" y="10" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="70" display="setup">setup</button>
+    <button x="85" y="10" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="70" display="go">go</button>
+    <chooser x="10" y="62" height="60" variable="strategy" current="0" width="150" display="strategy">
+      <choice type="string" value="tnr"></choice>
+      <choice type="string" value="cull"></choice>
+    </chooser>
+    <slider x="10" step="50" y="132" max="1000" width="200" display="initial-cat-population" height="50" min="0" direction="Horizontal" default="500.0" variable="initial-cat-population"></slider>
+    <slider x="10" step="50" y="187" max="2000" width="200" display="initial-prey-population" height="50" min="0" direction="Horizontal" default="500.0" variable="initial-prey-population"></slider>
+    <slider x="10" step="5" y="242" max="50" width="200" display="cats-processed-per-month" height="50" min="0" direction="Horizontal" default="15.0" variable="cats-processed-per-month"></slider>
+    <slider x="10" step="1" y="297" max="20" width="200" display="base-immigration" height="50" min="0" direction="Horizontal" default="6.0" variable="base-immigration"></slider>
+    <slider x="10" step="0.1" y="352" max="2" width="200" display="food-multiplier" height="50" min="0.1" direction="Horizontal" default="1.0" variable="food-multiplier"></slider>
+    <slider x="10" step="0.1" y="407" max="1" width="200" display="food-regen-rate" height="50" min="0" direction="Horizontal" default="0.5" variable="food-regen-rate"></slider>
+    <slider x="10" step="0.01" y="462" max="0.5" width="200" display="p-predation" height="50" min="0" direction="Horizontal" default="0.1" variable="p-predation"></slider>
+    <slider x="10" step="100" y="517" max="2000" width="200" display="K-prey" height="50" min="100" direction="Horizontal" default="500.0" variable="K-prey"></slider>
+    <monitor x="735" precision="0" y="10" height="60" fontSize="11" width="115" display="Adult intact">count-adult-intact</monitor>
+    <monitor x="855" precision="0" y="10" height="60" fontSize="11" width="130" display="Adult sterilised">count-adult-sterilised</monitor>
+    <monitor x="735" precision="0" y="75" height="60" fontSize="11" width="115" display="Kittens">count-kittens</monitor>
+    <monitor x="855" precision="0" y="75" height="60" fontSize="11" width="130" display="Prey">count preys</monitor>
+    <monitor x="735" precision="0" y="140" height="60" fontSize="11" width="155" display="Cumulative prey deaths">cumulative-prey-deaths</monitor>
+    <monitor x="895" precision="0" y="140" height="60" fontSize="11" width="155" display="Prey-years lost">prey-years-lost</monitor>
+    <monitor x="735" precision="0" y="205" height="60" fontSize="11" width="155" display="Cumulative TNR'd">cumulative-tnr-count</monitor>
+    <monitor x="895" precision="0" y="205" height="60" fontSize="11" width="155" display="Cumulative culled">cumulative-cull-count</monitor>
+    <monitor x="735" precision="3" y="270" height="60" fontSize="11" width="155" display="Immigration/month">current-immigration-rate</monitor>
+    <plot x="220" autoPlotX="true" yMax="8.0" autoPlotY="true" yAxis="rate" y="525" xMin="0.0" height="175" legend="false" xMax="120.0" yMin="0.0" width="300" xAxis="ticks" display="Immigration rate (monthly)">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="rate" color="-14439633" legend="true">
+        <setup></setup>
+        <update>plot current-immigration-rate</update>
+      </pen>
+    </plot>
+    <plot x="223" autoPlotX="true" yMax="50000.0" autoPlotY="true" yAxis="deficit" y="709" xMin="0.0" height="141" legend="false" xMax="120.0" yMin="0.0" width="454" xAxis="ticks" display="Prey-years lost (cumulative)">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="deficit" color="-2674135" legend="true">
+        <setup></setup>
+        <update>plot prey-years-lost</update>
+      </pen>
+    </plot>
+    <plot x="529" autoPlotX="true" yMax="600.0" autoPlotY="true" yAxis="count" y="527" xMin="0.0" height="175" legend="false" xMax="120.0" yMin="0.0" width="315" xAxis="ticks" display="Prey population">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="prey" color="-16777216" legend="true">
+        <setup></setup>
+        <update>plot count preys</update>
+      </pen>
+    </plot>
+    <plot x="733" autoPlotX="true" yMax="400.0" autoPlotY="true" yAxis="count" y="334" xMin="0.0" height="189" legend="true" xMax="120.0" yMin="0.0" width="271" xAxis="ticks" display="Cat population">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="adult intact" color="-1184463" legend="true">
+        <setup></setup>
+        <update>plot count-adult-intact</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="adult sterilised" color="-2674135" legend="true">
+        <setup></setup>
+        <update>plot count-adult-sterilised</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="kittens" color="-955883" legend="true">
+        <setup></setup>
+        <update>plot count-kittens</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="total" color="-7500403" legend="true">
+        <setup></setup>
+        <update>plot count cats</update>
+      </pen>
+    </plot>
+  </widgets>
+  <info>## WHAT IS IT?
+
+Agent-based model comparing stray cat management strategies (TNR vs culling) by their effect on a native prey species over 10 years. V1 implementation.
+
+See `ODD_protocol_final.md` and `draft_handoff_final.md` in this directory for the full specification.
+
+## HOW IT WORKS
+
+Each monthly tick runs 7 phases: cats move and feed → immigration → food regenerates → prey random walk → predation → reproduction and mortality → intervention. Burn-in of 12 months runs before intervention starts.
+
+## HOW TO USE IT
+
+1. Set sliders to desired values.
+2. Choose strategy from chooser.
+3. Click `setup`.
+4. Click `go` (forever button) or step by typing `go` in the Command Center.
+5. Observe monitors and plots.
+
+## TESTS
+
+Type `run-all-tests` in the Command Center to run all unit tests.
+
+## RESEARCH QUESTION
+
+At equal monthly intervention effort, which strategy produces the lowest cumulative prey-years lost over 10 years?
+</info>
+  <turtleShapes>
+    <shape name="default" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="5"></point>
+        <point x="40" y="250"></point>
+        <point x="150" y="205"></point>
+        <point x="260" y="250"></point>
+      </polygon>
+    </shape>
+    <shape name="circle" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+    </shape>
+  </turtleShapes>
+  <linkShapes>
+    <shape name="default" curviness="0.0">
+      <lines>
+        <line x="-0.2" visible="false">
+          <dash value="0.0"></dash>
+          <dash value="1.0"></dash>
+        </line>
+        <line x="0.0" visible="true">
+          <dash value="1.0"></dash>
+          <dash value="0.0"></dash>
+        </line>
+        <line x="0.2" visible="false">
+          <dash value="0.0"></dash>
+          <dash value="1.0"></dash>
+        </line>
+      </lines>
+      <indicator>
+        <shape name="link direction" rotatable="true" editableColorIndex="0">
+          <line endX="90" startY="150" marked="true" color="-1920102913" endY="180" startX="150"></line>
+          <line endX="210" startY="150" marked="true" color="-1920102913" endY="180" startX="150"></line>
+        </shape>
+      </indicator>
+    </shape>
+  </linkShapes>
+  <previewCommands>setup repeat 75 [ go ]</previewCommands>
+  <experiments>
+    <experiment name="Exp1_matched_effort" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="120">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>count-adult-intact</metric>
+        <metric>count-adult-sterilised</metric>
+        <metric>count-kittens</metric>
+        <metric>count preys</metric>
+        <metric>prey-years-lost</metric>
+        <metric>cumulative-prey-deaths</metric>
+        <metric>cumulative-tnr-count</metric>
+        <metric>cumulative-cull-count</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="strategy">
+          <value value="&quot;tnr&quot;"></value>
+          <value value="&quot;cull&quot;"></value>
+        </enumeratedValueSet>
+        <steppedValueSet variable="cats-processed-per-month" first="0" step="5" last="40"></steppedValueSet>
+        <enumeratedValueSet variable="initial-cat-population">
+          <value value="300"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-prey-population">
+          <value value="500"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="base-immigration">
+          <value value="6"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="food-multiplier">
+          <value value="1"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="food-regen-rate">
+          <value value="0.5"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="p-predation">
+          <value value="0.1"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="K-prey">
+          <value value="500"></value>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="Exp2_immigration_sensitivity" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="120">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>count-adult-intact</metric>
+        <metric>count-adult-sterilised</metric>
+        <metric>count preys</metric>
+        <metric>prey-years-lost</metric>
+        <metric>cumulative-prey-deaths</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="strategy">
+          <value value="&quot;tnr&quot;"></value>
+          <value value="&quot;cull&quot;"></value>
+        </enumeratedValueSet>
+        <steppedValueSet variable="cats-processed-per-month" first="0" step="10" last="40"></steppedValueSet>
+        <enumeratedValueSet variable="base-immigration">
+          <value value="2"></value>
+          <value value="6"></value>
+          <value value="15"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-cat-population">
+          <value value="300"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-prey-population">
+          <value value="500"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="food-multiplier">
+          <value value="1"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="food-regen-rate">
+          <value value="0.5"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="p-predation">
+          <value value="0.1"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="K-prey">
+          <value value="500"></value>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="Exp3_feeding_ban" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="120">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>count-adult-intact</metric>
+        <metric>count-adult-sterilised</metric>
+        <metric>count preys</metric>
+        <metric>prey-years-lost</metric>
+        <metric>cumulative-prey-deaths</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="strategy">
+          <value value="&quot;tnr&quot;"></value>
+          <value value="&quot;cull&quot;"></value>
+        </enumeratedValueSet>
+        <steppedValueSet variable="cats-processed-per-month" first="0" step="10" last="40"></steppedValueSet>
+        <enumeratedValueSet variable="food-multiplier">
+          <value value="0.3"></value>
+          <value value="0.7"></value>
+          <value value="1"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-cat-population">
+          <value value="300"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-prey-population">
+          <value value="500"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="base-immigration">
+          <value value="6"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="food-regen-rate">
+          <value value="0.5"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="p-predation">
+          <value value="0.1"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="K-prey">
+          <value value="500"></value>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+  </experiments>
+</model>
