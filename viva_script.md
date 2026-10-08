@@ -9,9 +9,9 @@ Use this as a rehearsal script. Memorise the opening and the five likely-questio
 
 ## 60-second opening — the pitch
 
-> "Our research question is narrow and quantitative. At matched monthly intervention effort, culling will clearly produce lower prey mortality than TNR because sterilised cats continue to hunt — the direction is predictable from first principles. The interesting question is the **magnitude**: how many more cats does a TNR program need to process per month to achieve the same 10-year wildlife outcome as a culling program at 20 cats per month? We call this the **TNR effort multiplier**.
+> "Our research question is one sentence: at matched monthly intervention effort, how many additional prey deaths does TNR cause per cat spared from culling over 10 years?
 >
-> The multiplier can be a finite factor like 2× or 3×, or it can be *infinite* — meaning no achievable TNR effort closes the gap, because sterilised cats keep hunting throughout their lifespans. Either answer is informative. The simulation produces this number, and we also test how it scales with immigration pressure and food availability."
+> The direction is predictable — culling produces fewer prey deaths because sterilised cats keep hunting. The *quantitative exchange rate* is not. It could be close to zero (TNR is nearly as effective as culling for wildlife) or in the tens (each sterilised cat prevents many prey deaths over its remaining lifespan). The simulation produces this number. From our runs, the headline at the Gunther et al. 80% coverage reference effort is roughly 0.4 prey deaths per cat spared — meaning each cat we killed under culling saved less than half a prey animal over the decade. That's an order of magnitude below the naive 'each cat kills many prey per year' expectation, because immigration backfill and sterilised cats continuing to hunt eat most of the apparent benefit."
 
 ---
 
@@ -35,7 +35,9 @@ Point at the plots as they fill in:
 
 Pull up the deterministic projection values or your actual Exp1 output:
 
-> "From the deterministic projection used to validate the model before implementation: at matched effort of 20 cats per month, cumulative predation is around 160 under culling and 480 under TNR. Prey-years-lost favours culling by about 24 percentage points. Our Experiment 1 BehaviorSpace sweep tests whether TNR at higher effort can close that gap. If it can't within effort levels ≤ 40 cats per month, the structural finding is: TNR has an inherent wildlife ceiling that no reasonable program effort can push past."
+> "At matched effort of 20 cats per month — our reference, chosen as the Gunther et al. 80% annual coverage threshold — cumulative predation is around 370 under culling and 480 under TNR. The gap is 110 extra prey deaths, divided by ~300 cats killed in the culling scenario, gives roughly 0.4 prey saved per cat killed. That's the headline exchange rate.
+>
+> We also observed a secondary structural finding: TNR at 40 cats per month is nearly indistinguishable from TNR at 20 — the total cat population stays near 300 regardless of effort. This is because sterilised cats accumulate and keep hunting while immigrants and juveniles refill the intact pool. TNR has a wildlife-impact floor that higher effort does not push past."
 
 ---
 
@@ -65,9 +67,9 @@ Pull up the deterministic projection values or your actual Exp1 output:
 
 > "Three frameworks. First, percent-of-population targets — the literature uses coverage percentages, with 57% as a lower bound from McCarthy et al. and 80% as an aggressive-but-achievable upper threshold from Gunther et al. Second, operational capacity — a community TNR clinic typically processes 20 to 50 cats per month regardless of coverage, driven by vet availability and trap inventory. Third, opportunistic — many programs catch whatever is brought in without an explicit target. Our reference anchors to the first framework and we sweep across the second's typical range."
 
-### Q: "That juvenile mortality rate is really high. Isn't 35% per month unrealistic?"
+### Q: "What's your juvenile mortality rate, and why?"
 
-> "It's at the high end of the feral kitten mortality literature, which spans 50% to 90% first-year mortality. We adopted the high end deliberately. V1 doesn't explicitly model density-dependent processes — disease spreading in dense colonies, maternal food stress, kitten predation by other cats — but these are documented drivers of feral kitten death. We absorb them into this single rate. The alternative was adding three or four density-dependent mechanisms, which the proposal feedback explicitly asked us to cut. Per-female fecundity is held at literature-consistent values — two litters a year, four kittens per litter — so the biology that reviewers would check first is preserved."
+> "0.25 per month, giving about 18% survival to 6 months. That's at the low-moderate end of the feral kitten mortality literature, which spans 10% to 50% survival to independence. The rate was calibrated so internal R₀ is roughly 1.5 — unmanaged populations grow about 20% per year, which matches the feral biology range of 20 to 50% annual growth in good conditions documented in Nutter et al. and Boone et al. The elevated mortality implicitly absorbs density-dependent processes we don't model explicitly — disease spread in dense colonies, intraspecific predation on kittens, maternal food stress. Per-female fecundity is held at literature-consistent values of two litters a year and four kittens per litter, so the quantity reviewers check first is preserved."
 
 ### Q: "Why not use the vacuum effect through territorial exclusion rather than food?"
 
@@ -79,11 +81,11 @@ Pull up the deterministic projection values or your actual Exp1 output:
 
 ### Q: "What are the model's limitations?"
 
-> "Six that we'd flag honestly. First, prey are generic — no specific taxon with calibrated life history. Second, cat sex is tracked but we don't model male-female proximity for mating; we use a direct monthly birth probability. Third, cats can't learn to avoid traps. Fourth, intervention is random across the grid; real programs target high-density areas. Fifth, sterilised cats hunt at the same rate as intact cats by default — that's the conservative assumption for TNR, so any TNR advantage we report is a lower bound. Sixth, the carrying-capacity ceiling comes from our high juvenile mortality rather than an explicit mechanism, so we can't tune cat density independently of mortality. All six are documented as future extensions."
+> "Six that we'd flag honestly. First, prey are generic — no specific taxon with calibrated life history. Second, cat sex is tracked but we don't model male-female proximity for mating; we use a direct monthly birth probability. Third, cats can't learn to avoid traps. Fourth, intervention is random across the grid; real programs target high-density areas. Fifth, sterilised cats hunt at the same rate as intact cats by default — that's the conservative assumption for TNR, so any TNR disadvantage we report is an upper bound. Sixth, the carrying-capacity dynamics come from juvenile mortality + food-driven immigration rather than an explicit density mechanism, so we can't tune cat density independently of mortality. All six are documented as future extensions."
 
 ### Q: "What if sterilised cats hunt less than intact?"
 
-> "Our default sets `sterilised-hunting-fraction` to 1.0 — same rate as intact. We chose this as the conservative assumption per Longcore et al. 2009, who argued the evidence for reduced post-sterilisation hunting is mixed. If sterilisation did reduce hunting — say to 0.75 or 0.5 — TNR's wildlife-impact penalty would shrink. The multiplier we report under the baseline is therefore an upper bound; the true multiplier under reduced-hunting scenarios would be smaller. Any wildlife finding we claim for TNR holds *a fortiori* under reduced hunting."
+> "Our default sets `sterilised-hunting-fraction` to 1.0 — same rate as intact. We chose this as the conservative assumption per Longcore et al. 2009, who argued the evidence for reduced post-sterilisation hunting is mixed. If sterilisation did reduce hunting — say to 0.75 or 0.5 — TNR's wildlife-impact penalty would shrink. The exchange rate we report under the baseline is therefore an upper bound on the true TNR cost; under reduced-hunting scenarios the number would be smaller. Any wildlife finding we claim for TNR holds *a fortiori* under reduced hunting."
 
 ### Q: "Why is the carrying-capacity story a bit hand-wavy?"
 
@@ -121,7 +123,7 @@ Describe: what you proposed, what your teammate proposed (or what the alternativ
 
 ## 30-second close
 
-> "The V1 model is scoped tightly around one quantitative question — the TNR effort multiplier — chosen deliberately because its direction is predictable but its magnitude is not. The model has 21 parameters, 5 cat state variables, 7 tick phases, and ~500 lines of NetLogo code. We've validated behaviour against a deterministic projection run before implementation. BehaviorSpace experiments are configured for the primary analysis plus sensitivity across immigration and food. Several mechanisms are documented as future extensions, each with clear rationale for being out of V1 scope."
+> "The V1 model is scoped tightly around one quantitative question — the exchange rate between prey saved and cats killed under culling versus TNR — chosen deliberately because its direction is predictable but its magnitude is not. The headline value at the Gunther 80% coverage reference is roughly 0.4 prey saved per cat killed, an order of magnitude below naive expectation because of immigration backfill and sterilised cats continuing to hunt. The model has 21 parameters, 5 cat state variables, 7 tick phases, and about 500 lines of NetLogo code. BehaviorSpace experiments are configured for the primary analysis plus sensitivity across immigration and food. Several mechanisms are documented as future extensions, each with clear rationale for being out of V1 scope."
 
 ---
 
@@ -129,9 +131,9 @@ Describe: what you proposed, what your teammate proposed (or what the alternativ
 
 - [ ] Opening (60s) memorised
 - [ ] Can describe each of the 7 phases without reading
-- [ ] Can state the three answer shapes for the multiplier
+- [ ] Can state the headline exchange-rate finding and interpret the units
 - [ ] Can defend the 20 cats/month reference (Gunther et al. 80% benchmark)
-- [ ] Can defend Set B rate calibration (specifically the high kitten mortality)
+- [ ] Can defend Set B rate calibration (specifically d-juvenile = 0.25 → R₀ ≈ 1.5)
 - [ ] Can defend food-driven immigration framing
 - [ ] Can defend removing hybrid, catchability, prey habitat
 - [ ] Can defend 100% sterilised hunting rate as conservative

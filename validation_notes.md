@@ -1,129 +1,119 @@
 # V1 Model Validation — NetLogo vs Deterministic Projection
 
-**Date:** 2026-10-07
-**Reference projection:** `/private/tmp/claude-501/-Users-tomcheng-Master-unimelb-S2-computational-modelling-ass2/27ca16ec-a811-4dc4-9b04-bc1ea117f044/scratchpad/v1_projection.py`
+**Date:** 2026-10-08
+**Reference projection:** `scratchpad/v1_projection_v2.py`
 
-## Expected (from deterministic projection, non-spatial aggregate)
+## Research question (RQ-A)
 
-| Strategy | Final adult cats | Final prey | Prey-years lost | % deficit |
-|---|---|---|---|---|
-| Unmanaged | ~344 | ~20 | ~47,700 | 79.5% |
-| TNR @ 20/mo | ~204 | ~40 | ~46,400 | 77.3% |
-| Cull @ 20/mo | 0 | ~190 | ~33,500 | 55.9% |
+> At matched monthly intervention effort, how many additional prey deaths does TNR cause per cat spared from culling over 10 years?
 
-**Required ordering (lower prey-years-lost = better for conservation):**
-`cull < TNR < unmanaged`
+**Primary outcome metric:**
+```
+cost(N) = (prey_kills_TNR_at_N − prey_kills_cull_at_N) / cumulative_cats_culled_at_N
+```
 
-NetLogo may show different absolute numbers because:
-- Spatial clustering (not in projection) affects local predation
-- Stochasticity means each run varies; the projection is deterministic
-- The predation exposure function in the projection is a non-spatial approximation
+Headline value is `cost(20)` at our reference effort of 20 cats/month (= 80% annual coverage of initial N=300, matching Gunther et al. 2022's field threshold).
 
-What should **always** match:
-- The ordering above
-- Order-of-magnitude values (within 2× of projection)
-- Unmanaged population drifts upward (not exponential explosion, not plateau at starting value)
-- Culling @ 20/mo drives cats to zero
-- TNR @ 20/mo leaves ~half the cats as sterilised adults
+## Expected (from projection with Set B rates, base-immigration=10)
 
-## NetLogo results (fill in after running)
+| Scenario | Final cats | Final prey | Cumulative kills |
+|---|---|---|---|
+| Unmanaged | ~1,900 (6× growth) | ~2 | ~477 |
+| Cull @ 10 | ~317 | ~20 | ~490 |
+| Cull @ 15 | ~0 by year 10 | ~82 | ~453 |
+| Cull @ 20 | ~0 by year 5 | ~160 | ~366 |
+| TNR @ 20 | ~314 | ~16 | ~484 |
+| TNR @ 40 | ~311 | ~18 | ~485 |
+
+**Projected headline value:** `cost(20) = (484 − 366) / ~300 ≈ 0.4 prey per cat killed`.
+
+NetLogo results will differ in absolute magnitude due to:
+- Spatial clustering (cats cluster near food, prey scattered — not captured in non-spatial projection)
+- Stochasticity across replicates
+- Different predation implementation (binary Moore-neighborhood check vs. exposure saturation function in projection)
+
+What should **qualitatively match**:
+- Unmanaged cat population grows substantially (not flat)
+- TNR @ 40 is near-indistinguishable from TNR @ 20 (sterilised cats don't disappear faster at higher effort)
+- Culling at or above 15 cats/month drives cats toward zero over the 10-year horizon
+- `cost(20)` is positive and small-to-moderate (not zero, not hundreds)
+
+## NetLogo baseline scenario results (fill in after running)
 
 ### Scenario 1 — Unmanaged (cats-processed-per-month = 0)
 
 - strategy: tnr (irrelevant at effort = 0)
-- base-immigration: 6
+- base-immigration: 6 (default)
 - food-multiplier: 1.0
-- Random seed used (if any): ____
 
 | Metric | NetLogo value |
 |---|---|
-| Adult intact (tick 120) | |
-| Adult sterilised | 0 |
-| Kittens | |
-| Prey | |
-| Prey-years lost | |
+| Final adult cat count | |
+| Final prey count | |
 | Cumulative prey deaths | |
-| Immigration rate at tick 120 | |
 
-### Scenario 2 — TNR @ 20/mo
-
-- strategy: tnr
-- cats-processed-per-month: 20
-- base-immigration: 6
-- food-multiplier: 1.0
+### Scenario 2 — TNR @ 20
 
 | Metric | NetLogo value |
 |---|---|
-| Adult intact (tick 120) | |
-| Adult sterilised | |
-| Kittens | |
-| Prey | |
-| Prey-years lost | |
+| Final adult intact | |
+| Final adult sterilised | |
+| Final prey | |
+| Cumulative prey deaths | |
 | Cumulative TNR'd | |
 
-### Scenario 3 — Culling @ 20/mo
-
-- strategy: cull
-- cats-processed-per-month: 20
+### Scenario 3 — Culling @ 20
 
 | Metric | NetLogo value |
 |---|---|
-| Adult intact (tick 120) | |
-| Prey | |
-| Prey-years lost | |
+| Final adult cats | |
+| Final prey | |
+| Cumulative prey deaths | |
 | Cumulative culled | |
 
-## Ordering check (model sanity)
+### Headline derivation
 
-Prey-years lost: cull ___ < TNR ___ < unmanaged ___
-Cumulative prey predation: cull ___ < TNR ___ < unmanaged ___
+```
+cost(20) = (NetLogo TNR cumulative-prey-deaths at effort 20
+           − NetLogo cull cumulative-prey-deaths at effort 20)
+         / NetLogo cumulative-cull-count at effort 20
+```
 
-If both orderings hold qualitatively, the model is behaving sensibly. If not, debug before running Experiment 1.
+Fill in: cost(20) = ___ prey saved per cat killed.
 
-## Post-hoc multiplier analysis (headline finding)
+## Post-hoc analysis across the full sweep (headline finding)
 
-### Why cull @ 20 is the reference
+After Experiment 1 BehaviorSpace completes:
 
-At initial N=300, 20 cats/month = 240/year = **80% annual coverage of the initial population**. This matches Gunther et al. (2022)'s field threshold — aggressive-but-realistic for a well-resourced local program. See the ODD §1 Purpose for full literature anchoring.
+### Effort-to-coverage mapping at N=300:
 
-Effort-to-coverage mapping at N=300:
-
-| cats/month | annual coverage |
-|---|---|
-| 5 | 20% |
-| 10 | 40% |
-| 15 | 60% (near McCarthy et al. 57% threshold) |
-| 20 | 80% (Gunther et al. threshold — reference) |
-| 25 | 100% |
-| 30 | 120% (operationally unrealistic) |
-| 40 | 160% (operationally unrealistic) |
+| cats/month | annual coverage | literature anchor |
+|---|---|---|
+| 5 | 20% | well below minimum |
+| 10 | 40% | below McCarthy threshold |
+| 15 | 60% | near McCarthy et al. 57% threshold |
+| 20 | 80% | **Gunther et al. threshold — reference** |
+| 25 | 100% | aggressive, approaching unrealistic |
+| 30+ | 120%+ | operationally unrealistic |
 
 ### Procedure
 
-After the Experiment 1 BehaviorSpace run completes, open the CSV in Python/R/Excel and compute:
+For each effort `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`:
 
-1. `T = median(cumulative-prey-deaths | strategy=cull, effort=20)` across the 30 replicates.
-2. For each TNR effort `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`:
-   - `K_N = median(cumulative-prey-deaths | strategy=tnr, effort=N)`.
-3. Find smallest `N*` such that `K_{N*} ≤ T`.
-4. Report the **TNR effort multiplier = `N* / 20`**.
+1. In each replicate, compute `cost_rep = (prey_kills_TNR_rep − prey_kills_cull_rep) / cull_count_rep`.
+2. Take the median across the 30 replicates for each effort level.
+3. Report `cost(N)` curve. Headline value is `cost(20)`.
 
-Report possibilities:
-- Clean multiplier (e.g., N* = 50, multiplier = 2.5×): "TNR needs 2.5× culling's effort for equivalent wildlife outcomes."
-- No matching N* in the sweep: "TNR does not match culling at any effort level up to 40 cats/month; the TNR floor exceeds culling's output by X%."
-- N* ≤ 20: "TNR achieves equivalence at or below culling's reference effort — strategies are near-equivalent at baseline."
+### Sensitivity
 
-Repeat the derivation across the three immigration levels (`base_immigration` ∈ {2, 6, 15}, Experiment 2) and three food levels (`food_multiplier` ∈ {0.3, 0.7, 1.0}, Experiment 3) to produce the sensitivity story.
+- Across `base_immigration ∈ {2, 6, 15}` (Exp2): expect `cost(20)` to **decrease** under high immigration (culling's benefit offset by backfill, so each cat killed saves fewer prey).
+- Across `food_multiplier ∈ {0.3, 0.7, 1.0}` (Exp3): expect `cost(20)` to **increase** under feeding bans (fewer total cats, each removal matters more).
 
-## Observations / issues found
+## Calibration knobs
 
-_(fill in as you go)_
-
-## Calibration notes
-
-If results are extreme in either direction, these parameters are the main tuning knobs:
+If results are extreme in either direction, these are the main tuning parameters:
 - `p-predation` — raises/lowers predation pressure (currently 0.1)
 - `K-prey` — raises/lowers prey resilience (currently 500)
-- `food-multiplier` — raises/lowers overall food availability (currently 1.0)
-- `base-immigration` — raises/lowers how much culling-created vacancies refill (currently 6)
-- Food capacity scale (hardcoded in `setup-patches`, low/mid/high = 0.3 / 1.0 / 2.0) — affects immigration responsiveness
+- `d-juvenile-cat` — raises/lowers cat population growth (currently 0.25)
+- `base-immigration` — slider; sweeps in Exp2
+- `food-multiplier` — slider; sweeps in Exp3

@@ -84,38 +84,43 @@ show (word count cats " cats, " count preys " preys, " prey-years-lost " deficit
 
 Both runs must produce bit-identical output. If not, there's a hidden source of non-determinism (unlikely with the current code, but worth confirming before running 810 replicates).
 
-## Primary analysis plan — TNR effort multiplier
+## Primary analysis — wildlife cost per cat spared
 
-The headline finding is a single multiplier that quantifies "how much extra effort TNR needs to match culling's wildlife outcome."
+The headline finding is a single ratio quantifying "per cat killed via culling (rather than TNR'd), how many extra prey deaths are prevented over 10 years."
 
-**Reference effort is 20 cats/month = 80% annual coverage of initial population**, which matches Gunther et al. (2022)'s field benchmark. See ODD §1 Purpose for the full literature anchoring. McCarthy et al. (2013)'s 57% annual-capture minimum maps to 15 cats/month at our density.
+**Reference effort is 20 cats/month = 80% annual coverage of initial N=300**, matching Gunther et al. (2022)'s field benchmark. See ODD §1 Purpose for literature anchoring. McCarthy et al. (2013)'s 57% minimum maps to 15 cats/month.
 
 **Procedure (post-hoc on Exp1 CSV):**
 
-1. Reference target: `T = median(cumulative-prey-deaths | strategy=cull, effort=20, over 30 reps)`.
-2. TNR trajectory: for each `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`, compute `K_N = median(cumulative-prey-deaths | strategy=tnr, effort=N)`.
-3. Multiplier `M = N* / 20` where `N*` is the smallest `N` with `K_N ≤ T`.
-4. Report `M`, or "no N* in sweep range" if TNR never catches up.
+For each effort level `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`:
+
+1. For each replicate `r`, compute `cost_r(N) = (prey_kills_TNR_at_N_r − prey_kills_cull_at_N_r) / cull_count_at_N_r`.
+   - **Important:** compute the ratio inside each replicate FIRST, then take the median across replicates. Taking `median(numerator) / median(denominator)` is biased.
+2. Headline value is `median(cost_r(20))` across the 30 replicates.
+3. Report the `cost(N)` curve across all effort levels as sensitivity.
+
+Note: `cost_r(0)` is undefined (0 culls at effort = 0). Omit effort 0 from the ratio analysis; it's a trivial baseline.
 
 **Secondary analyses:**
 
-- Plot two curves (TNR, cull): x = effort, y = median cumulative-prey-deaths, with IQR shaded. Visualise where the curves cross or whether TNR ever reaches culling's floor.
-- Same plot for `prey-years-lost` as a sanity check (same ordering expected).
-- Report median and IQR for cumulative-prey-deaths at each (strategy, effort) point.
-- Non-parametric Mann-Whitney U at each effort level for formal TNR-vs-cull significance.
+- Plot two curves (TNR, cull): x = effort, y = median cumulative-prey-deaths, with IQR shaded. Shows where the strategies' predation differs.
+- Plot `cost(N)` curve: x = effort, y = median cost ratio, with IQR shaded.
+- Same analysis for `prey-years-lost` as sanity check.
+- Report median and IQR for cumulative-prey-deaths and cumulative-cull-count at each (strategy, effort) point.
+- Non-parametric Mann-Whitney U at each effort level for formal TNR-vs-cull significance on predation count.
 
 **Sensitivity across experiments:**
 
-- Repeat the multiplier derivation separately for each `base_immigration ∈ {2, 6, 15}` level in Exp2.
+- Repeat the cost(20) calculation for each `base_immigration ∈ {2, 6, 15}` level in Exp2.
 - Repeat for each `food_multiplier ∈ {0.3, 0.7, 1.0}` in Exp3.
-- Report the multiplier as a function of (base_immigration, food_multiplier) — this is the headline sensitivity story.
+- Report `cost(20)` as a function of (base_immigration, food_multiplier).
 
-**Expected scaling patterns to look for:**
+**Expected scaling patterns:**
 
-- Multiplier *shrinks* as `base_immigration` rises: culling's benefit is offset by immigrants, so TNR looks relatively more competitive.
-- Multiplier *rises* as `food_multiplier` falls: fewer total cats mean each cat removal matters more, widening culling's lead.
+- `cost(20)` **decreases** as `base_immigration` rises: culling's benefit is offset by immigrants, so each cat killed saves relatively fewer prey.
+- `cost(20)` **increases** as `food_multiplier` falls: fewer total cats, each removal matters more for the surviving prey population.
 
-If these patterns hold, the sensitivity story is coherent and defensible. If they're reversed, that's a signal to re-examine the mechanism (likely food-driven immigration not firing strongly enough).
+If these patterns hold, the sensitivity story is coherent. If they reverse, re-examine the food-driven immigration mechanism.
 
 ## File naming convention (suggested)
 

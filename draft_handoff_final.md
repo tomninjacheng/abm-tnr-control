@@ -8,23 +8,25 @@ This document captures the design decisions, research question, and model specif
 
 ## 1. Project Overview
 
-### Research question (RQ-A, narrow)
+### Research question (RQ-A)
 
-> **How many cats per month must a TNR program process to match the 10-year cumulative wildlife outcome (cumulative prey predation events) of a culling program processing 20 cats/month? Does this "TNR effort multiplier" depend on immigration pressure and food availability?**
+> **At matched monthly intervention effort, how many additional prey deaths does TNR cause per cat spared from culling over 10 years?**
 
-**Why narrow this way.** Teacher feedback highlighted that the original "which strategy produces lower prey mortality at matched effort" question has a predictable direction (culling wins because sterilised cats continue hunting). The narrowed question explicitly accepts that direction and asks about the **magnitude** of the TNR effort penalty — a quantity that genuinely requires simulation to answer.
+**Why this framing.** Teacher feedback flagged that "which strategy produces lower prey mortality" has a predictable direction — culling wins because sterilised cats continue hunting. The reframed question accepts that direction and asks the quantitative **exchange rate**: how much wildlife is sacrificed per cat spared. The answer could be anywhere from near-zero (TNR almost as effective as culling) to tens (each sterilised cat prevents many prey deaths). First-principles reasoning cannot predict it; the simulation produces it.
 
-**Primary outcome metric:** cumulative prey predation events over 120 months. The TNR effort multiplier is derived post-hoc as `smallest N such that TNR @ N produces ≤ cull @ 20 kills` divided by 20.
+**Primary outcome metric:**
 
-**Why 20 cats/month as the reference.** At N=300 initial cats, 20/month = 240/year = **80% annual coverage of the initial population**. This matches Gunther et al. (2022), a 12-year Israeli TNR field study where 80% neutering coverage was the aggressive-but-realistic upper threshold a well-resourced local program could sustain. McCarthy et al.'s (2013) 57% annual-capture minimum maps to 15 cats/month at our density. The 0–40 sweep therefore covers: below minimum (0–10), near McCarthy's threshold (15), at Gunther's upper threshold (20), and above operational realism (25+). The reference is anchored to the field literature rather than being chosen arbitrarily.
+```
+wildlife-cost-per-cat-spared(N) = (prey_kills_TNR_at_N − prey_kills_cull_at_N) / cumulative_cats_culled_at_N
+```
 
-**Three possible answer shapes:**
+Headline value is at **N = 20 cats/month** (the Gunther et al. 2022 field threshold of 80% annual coverage at our N=300 initial population). The full `cost(N)` curve across the 0–40 sweep is reported as sensitivity.
 
-1. **Finite multiplier** (e.g., 2.5×) — TNR achieves equivalence at that factor of extra effort. Quantitative policy answer.
-2. **No achievable multiplier** — TNR cannot close the gap within the sweep range because sterilised cats keep hunting throughout their lifespan. Structural finding about an inherent TNR limitation.
-3. **Near-1× multiplier** — strategies are near-equivalent because immigration offsets culling. Overturns intuition.
+**Secondary metrics (interpretation):** cumulative prey-years lost vs no-cat baseline (sanity check); per-strategy final cat population and prey population.
 
-**Secondary metric:** prey-years lost vs no-cat baseline, retained for cross-comparison.
+**Interpretation.** The ratio is a policy-decision support quantity. A city weighing TNR vs culling reads: "per cat killed, X extra prey saved over 10 years." If X is small, cat welfare arguments dominate (TNR is nearly as effective). If X is large, wildlife conservation dominates. The model does not take a position on the ethical weighting.
+
+**Why 20 cats/month as the reference.** At N=300 initial cats, 20/month = 240/year = **80% annual coverage of the initial population**. Matches Gunther et al. (2022)'s field threshold from a 12-year Israeli TNR study. McCarthy et al. (2013)'s 57% minimum maps to 15 cats/month. The sweep covers 0 (unmanaged baseline) through 40 (operationally unrealistic).
 
 ### Why this question matters
 
@@ -128,7 +130,7 @@ See ODD §2.2 for the full table. Highlights:
 | Group | Key parameter | Default |
 |---|---|---|
 | Cat reproduction | `p_birth`, `litter_size` | 0.17, 4 |
-| Cat mortality | `d_juvenile`, `d_adult` | 0.35, 0.025 |
+| Cat mortality | `d_juvenile`, `d_adult` | 0.25, 0.025 |
 | Prey reproduction | `p_prey_birth`, `K_prey` | 0.25, 500 |
 | Prey mortality | `d_juvenile_prey`, `d_adult_prey` | 0.30, 0.05 |
 | Food | `food_capacity` (low/mid/high) | 0.3 / 1.0 / 2.0 |
@@ -143,7 +145,7 @@ Total: 21 parameters.
 
 Three experiments, all answering RQ-A directly:
 
-1. **Matched-effort comparison** (sweep `cats_processed_per_month` 0–40; two strategies TNR vs cull; 30 reps). Headline post-hoc analysis: compute the TNR effort multiplier that matches culling @ 20.
+1. **Matched-effort comparison** (sweep `cats_processed_per_month` 0–40; two strategies TNR vs cull; 30 reps). Headline post-hoc analysis: compute `cost(20) = (prey_kills_TNR − prey_kills_cull) / cats_culled` at the reference 20 cats/month, plus `cost(N)` curve across the sweep.
 2. **Immigration pressure sensitivity** (repeat Exp 1 at `base_immigration` ∈ {2, 6, 15}).
 3. **Feeding-ban sensitivity** (repeat Exp 1 at `food_multiplier` ∈ {0.3, 0.7, 1.0}).
 
@@ -163,7 +165,7 @@ Decisions made in response to the marker feedback and advisor review. Each is do
 
 **Why kept: food dynamics for immigration.** Without food-mediated immigration, culling and TNR differ only in *how* cats are removed, not in dynamic consequence. The vacuum-effect dynamic — culling creates food "vacancies" that pull immigrants faster than TNR — is central to the TNR-vs-culling comparison the research question asks about. Removing food dynamics would make the comparison trivially one-sided. Food in V1 does NOT drive mortality — only immigration.
 
-**Why Set B rates (p_birth = 0.17/mo, d_juvenile = 0.35/mo, d_adult = 0.025/mo).** Per-female fecundity is held at literature-consistent values (~2 litters/year, 4 kittens/litter). Juvenile mortality is pushed higher than naive-literature values to absorb density-dependent processes (disease, intraspecific pressure, maternal stress) that are documented in feral colonies but not explicitly modelled. The alternative (modelling density dependence directly) would add complexity without changing the inter-strategy comparison. This gives internal R0 near replacement so unmanaged populations grow only via accumulated immigration — a controlled, defensible dynamic.
+**Why Set B rates (p_birth = 0.17/mo, d_juvenile = 0.25/mo, d_adult = 0.025/mo).** Per-female fecundity is held at literature-consistent values (~2 litters/year, 4 kittens/litter). Juvenile mortality at 0.25/month gives ~18% survival to 6 months — low-moderate end of the feral literature. This produces an internal R₀ ≈ 1.5, so unmanaged populations grow ~20% per year under food-driven immigration, matching the 20–50% annual growth range documented in feral colonies (Nutter et al. 2004; Boone et al. 2019). The high juvenile mortality implicitly absorbs density-dependent processes (disease transmission, intraspecific predation on kittens, maternal food stress) that we do not model explicitly — the alternative would add state and mechanisms the proposal feedback asked us to cut.
 
 **Why logistic prey reproduction + prey-years-lost metric.** Without a regulator, prey rates give R0 ≈ 2.45, so prey grow 50%/year unchecked (500 → 60,000 over 10 years). Logistic reproduction with `K_prey = 500` prevents explosion. Combined with prey-years-lost metric (which is monotonic in harm), the model produces answerable dynamics that the deterministic projection confirms.
 
@@ -172,7 +174,7 @@ Decisions made in response to the marker feedback and advisor review. Each is do
 **Why phase ordering: feeding → immigration → regeneration.** Immigration ratio is computed from post-feeding (depleted) food state so it responds to current colony pressure rather than idealised capacity. Regeneration happens afterward to prepare for the next tick.
 
 **Why only adult cats (age ≥ 6 months) hunt and are trappable.**
-Kittens are ~half the population at Set B rates. If they counted toward predation, cat clusters would be deadlier for prey than their adult-hunter count alone would suggest. If they were trappable, random intervention selection would waste ~47% of effort on kittens that are ~92% doomed anyway (natural mortality) — distorting the comparison. Restricting both hunt and trap eligibility to adults is realistic and keeps the model's logic clean.
+Kittens are a substantial share of the population at Set B rates. If they counted toward predation, cat clusters would be deadlier for prey than their adult-hunter count alone would suggest. If they were trappable, random intervention selection would spend significant effort on kittens that are destined to die naturally within six months anyway — distorting the comparison. Restricting both hunt and trap eligibility to adults (age ≥ 6 months) is realistic and keeps the model's logic clean.
 
 **Why single territory radius for both sexes (assumption).** Intact males typically range further than females in reality. V1 uses a single 3-cell radius because at monthly resolution the primary role of `territory_radius` is food-search range, and mating is not modelled through proximity in V1 (reproduction is a direct monthly draw per intact female). Reintroducing a sex-specific split is straightforward if calibration later shows it matters.
 

@@ -17,7 +17,7 @@ globals [
 
   p-birth                 ;; monthly birth probability per intact adult female (default 0.17)
   litter-size             ;; fixed cat litter size (default 4)
-  d-juvenile-cat          ;; monthly death prob for cat age < 6 (default 0.35)
+  d-juvenile-cat          ;; monthly death prob for cat age < 6 (default 0.25)
   d-adult-cat             ;; monthly death prob for cat age >= 6 (default 0.025)
 
   p-prey-birth            ;; base monthly birth probability per adult female prey (default 0.25)
@@ -79,7 +79,7 @@ to setup-globals
 
   set p-birth 0.17
   set litter-size 4
-  set d-juvenile-cat 0.35
+  set d-juvenile-cat 0.25
   set d-adult-cat 0.025
 
   set p-prey-birth 0.25

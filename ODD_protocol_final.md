@@ -8,27 +8,34 @@ Following the ODD (Overview, Design concepts, Details) protocol standard (Grimm 
 
 This model compares two stray cat management strategies — trap-neuter-return (TNR) and culling — in terms of their effects on a co-occurring native prey species over a 10-year period. The prey species is generic and can represent ground-nesting birds, small reptiles, or small mammals depending on parameter calibration.
 
-**Framing.** At matched monthly intervention effort, culling will inevitably produce lower cumulative prey mortality than TNR because culling removes hunters while TNR keeps them alive (sterilised cats continue hunting). The direction is predictable from first principles. The question of research interest is not the direction but the **magnitude**: how much more TNR effort is required to close that wildlife gap, and does the required effort multiplier change with ecological context (immigration pressure, food availability)?
+**Research question (RQ-A):**
 
-**Research question (RQ-A, narrow):** How many cats per month must a TNR program process to match the 10-year cumulative wildlife outcome (cumulative prey predation events) of a culling program processing 20 cats/month? Does this "TNR effort multiplier" depend on immigration pressure and food availability?
+> At matched monthly intervention effort, how many additional prey deaths does TNR cause per cat spared from culling over 10 years?
 
-**Why the reference effort is 20 cats/month.** At our initial population of 300 cats, 20 cats/month = 240 processings per year = **80% annual coverage of the initial population**. This matches the Gunther et al. (2022) field benchmark from a 12-year Israeli TNR study: 80% neutering coverage was the aggressive-but-realistic upper threshold of a well-resourced local program (and was *still* insufficient when surrounding areas were untreated, which the sensitivity across `base_immigration` levels addresses). McCarthy et al. (2013)'s 57% annual-capture minimum threshold corresponds to 15 cats/month at our density. The 0–40 cats/month sweep therefore spans "well below the minimum" (0–10) through "aggressive but realistic" (15–20) up to "operationally unrealistic" (25+) for a real community program.
+**Why this framing.** The direction of the comparison (culling produces fewer prey deaths than TNR because sterilised cats continue hunting) is predictable from first principles. The non-trivial quantity is the **exchange rate** — a single number that quantifies the wildlife cost of choosing TNR over culling, expressed per cat whose life is spared. The answer could be anywhere from near-zero (sterilised cats contribute little; TNR is nearly as effective as culling) to tens (each sterilised cat prevents many prey deaths over its remaining lifespan). The simulation produces this number; it cannot be derived from first principles because it depends on the vacuum-effect strength, sterilised cat lifespan, kitten survival, and immigration dynamics.
 
-**Primary outcome metric:** cumulative prey predation events over 120 months (direct count of cat-caused prey deaths). The multiplier is derived post-hoc as `smallest N such that median(TNR-kills at effort N) ≤ median(cull-kills at effort 20)`, divided by 20.
+**Primary outcome metric:**
 
-**Three possible answer shapes, each informative:**
+```
+wildlife-cost-per-cat-spared(N) = (prey_kills_TNR_at_N − prey_kills_cull_at_N) / cumulative_cats_culled_at_N
+```
 
-1. **Finite multiplier.** TNR achieves equivalent wildlife outcomes at `N×` the effort of culling. Quantitative policy-relevant answer (e.g., "TNR needs 2.5× culling's effort").
-2. **No achievable multiplier (TNR floor exceeds culling's output).** No TNR effort within the achievable range closes the gap, because sterilised cats continue hunting throughout their natural lifespan (average ~3 years post-sterilisation). This would be a structural finding about an inherent limit of TNR.
-3. **Near-1× multiplier.** TNR and culling produce near-equivalent wildlife outcomes because culling's advantage is offset by immigrant backfill. Would overturn the naive intuition.
+At matched monthly effort N, we run both strategies for 10 years, record cumulative predation events, and compute the ratio. The denominator is the number of cats actually killed under culling (TNR culls zero), which is the "ethical cost" being traded off.
 
-**Secondary metric:** cumulative prey-years lost vs no-cat baseline, retained as a monotonic-in-harm sanity check and for cross-comparison with the predation-count metric.
+**Reference effort.** The analysis is performed at `N = 20 cats/month`, which at our initial population of 300 corresponds to 80% annual coverage — matching the Gunther et al. (2022) field benchmark (12-year Israeli TNR study, upper threshold of a well-resourced local program). McCarthy et al. (2013)'s 57% minimum maps to 15 cats/month. We also compute the metric across the full 0–40 sweep as sensitivity.
+
+**Secondary metrics:**
+
+- Cumulative prey-years lost vs no-cat baseline (sanity check; monotonic in harm).
+- Per-strategy final cat population and prey population (for interpretation).
+
+**Interpretation of the headline result.** The ratio is a policy-decision support quantity. A city weighing TNR vs culling can read: "per cat killed via culling, X extra prey are saved over 10 years." If X is small, cat welfare arguments dominate (TNR is nearly as good). If X is large, wildlife conservation arguments dominate (culling delivers meaningful wildlife benefit per cat killed). The model does not take a position on the ethical weighting.
 
 **Validation patterns.** The following should emerge from agent interactions:
 
-1. Unmanaged cat population grows upward from accumulated immigration (internal reproduction is near replacement at the chosen rates).
-2. Culling drives the intact population down quickly; immigration backfill partly offsets this.
-3. TNR produces a slow decline in total cats, but sterilised cats persist and continue consuming food and hunting.
+1. Unmanaged cat population grows ~20% per year (internal R₀ ≈ 1.5), reaching several times the initial size over 10 years.
+2. Culling at or above 15 cats/month drives the intact population toward zero over 5–10 years at baseline immigration; the removal rate dominates immigration backfill.
+3. TNR produces slow conversion of intact to sterilised, but total cat count remains near initial density because sterilised cats persist and immigrants + juveniles replenish the intact pool.
 4. Food-driven immigration responds to colony state: full colonies suppress immigration via food consumption; depleted colonies attract more immigrants.
 
 ---
@@ -75,7 +82,7 @@ The model contains three types of entities: cat agents, prey agents, and grid ce
 | `p_birth` | 0.17 / month | Monthly birth probability per intact adult female |
 | `litter_size` | 4 | Fixed litter size |
 | **Cat mortality (age-based flat rates)** | | |
-| `d_juvenile_cat` | 0.35 / month | Monthly death probability for cats aged < 6 months |
+| `d_juvenile_cat` | 0.25 / month | Monthly death probability for cats aged < 6 months |
 | `d_adult_cat` | 0.025 / month | Monthly death probability for cats aged ≥ 6 months |
 | **Cat movement** | | |
 | `territory_radius` | 3 cells | Food-search range (sex-unified; see §4) |
@@ -184,7 +191,7 @@ Monthly: adult cat counts (intact / sterilised), total cat count including kitte
 
 1. **Food has no effect on cat death.** Mortality is purely age-based; food dynamics drive only immigration. Reality: starvation is a documented mortality source in feral colonies. The abstraction holds because urban free-roaming cats are typically sustained by human food waste; food scarcity more plausibly reduces immigration than kills resident cats.
 2. **No catchability heterogeneity.** All intact adult cats are equally selectable. Reality: trap-shyness varies across individuals (Belsare & Vanak, 2020). Simplified away in V1 to focus on inter-strategy comparison rather than within-strategy mechanics.
-3. **Juvenile mortality is high (0.35/month for cats, 0.30/month for prey).** These absorb the density-dependent processes (disease, intraspecific competition, nest predation for prey) that we do not model explicitly. The alternative — modelling those processes directly — would add state and complexity without changing the inter-strategy comparison that answers RQ-A.
+3. **Juvenile mortality is high (0.25/month for cats, 0.30/month for prey).** These absorb the density-dependent processes (disease, intraspecific competition, nest predation for prey) that we do not model explicitly. Specifically for cats, this rate gives ~18% survival to 6 months — at the low-moderate end of the feral kitten mortality literature — and produces an internal R₀ of ~1.5 (unmanaged populations grow ~20% per year, matching the feral biology range of 20–50% annual growth). The alternative — modelling density effects directly — would add state and complexity without changing the inter-strategy comparison that answers RQ-A.
 4. **Sterilised cats hunt at the same rate as intact cats.** This is the conservative assumption for TNR per Longcore et al. (2009); if sterilisation actually reduces hunting, TNR's wildlife-impact advantage would be *larger* than this model reports.
 5. **Sex-unified territory radius.** Intact males typically range further than females in reality; we use a single 3-cell radius since mating is not modelled through proximity in V1, and the primary role of `territory_radius` here is food-search range.
 6. **No breeding season.** Seasonal pulses are abstracted into constant monthly rates. At a 10-year horizon, the comparative TNR-vs-culling outcome is not expected to shift from this.
@@ -273,10 +280,10 @@ Kittens (age < 6 months) do not count toward the predation presence check — on
 
 **Mortality + ageing.** All cats age by 1 month. Each cat then dies with probability:
 
-- `d_juvenile_cat` = 0.35/month if age < 6 months
+- `d_juvenile_cat` = 0.25/month if age < 6 months
 - `d_adult_cat` = 0.025/month if age ≥ 6 months
 
-Rationale for high juvenile mortality: this absorbs density-dependent processes (disease transmission in dense colonies, intraspecific predation on kittens, maternal food stress) that are documented in feral colony studies but not explicitly modelled in V1. Per-female fecundity is held at literature-consistent values (~2 litters/year, 4 kittens/litter — equivalent to `p_birth = 0.17/month`).
+Rationale for juvenile mortality value: at 0.25/month, survival to 6 months is ~18% — within the feral literature's low-moderate range. This produces internal R₀ ≈ 1.5, so unmanaged populations grow ~20% per year — matching feral biology where unmanaged colonies grow 20–50% annually in good conditions (Nutter et al. 2004; Boone et al. 2019). Per-female fecundity is held at literature-consistent values (~2 litters/year, 4 kittens/litter — `p_birth = 0.17/month` × `litter_size = 4`).
 
 ### 7.7 Prey reproduction and mortality (Phase 6, prey portion)
 
@@ -312,21 +319,24 @@ Costs per Benka et al. (2022). Reported alongside ecological outcomes.
 Three experiments, each directly tied to RQ-A.
 
 **Experiment 1 — Matched-effort comparison (primary).**
-Sweep `cats_processed_per_month` from 0 to 40 in steps of 5. At each level, run two strategies (TNR, cull). 30 replicates each. 2 × 9 × 30 = 540 runs. Primary output: cumulative prey predation events (and prey-years-lost as secondary) at each (strategy, effort) point.
+Sweep `cats_processed_per_month` from 0 to 40 in steps of 5. At each level, run two strategies (TNR, cull). 30 replicates each. 2 × 9 × 30 = 540 runs. Primary output: cumulative prey predation events and cumulative cats culled at each (strategy, effort) point.
 
-**Post-hoc multiplier derivation.** From the Exp1 output:
-1. Compute `T = median(cumulative-prey-deaths | strategy=cull, effort=20)` across replicates. This is the reference wildlife outcome.
-2. For each TNR effort level `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`, compute `K_N = median(cumulative-prey-deaths | strategy=tnr, effort=N)`.
-3. Find smallest `N*` such that `K_{N*} ≤ T`. If no such `N*` exists in the sweep range, report "no equivalence achievable at effort ≤ 40 cats/month" (Answer shape 2 above).
-4. Report multiplier = `N* / 20`.
+**Post-hoc wildlife-cost-per-cat-spared derivation.** From the Exp1 output:
+1. For each effort level `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`:
+   - `K_TNR(N) = median(cumulative-prey-deaths | strategy=tnr, effort=N)` across replicates.
+   - `K_cull(N) = median(cumulative-prey-deaths | strategy=cull, effort=N)` across replicates.
+   - `C(N) = median(cumulative-cull-count | strategy=cull, effort=N)` across replicates.
+   - `cost(N) = (K_TNR(N) − K_cull(N)) / C(N)`.
+2. The headline value is `cost(20)` at our reference effort.
+3. The full `cost(N)` curve shows how the exchange rate scales with effort.
 
 **Experiment 2 — Immigration pressure sensitivity.**
-Repeat Experiment 1 at `base_immigration` ∈ {2, 6, 15}. For each immigration level, derive the TNR effort multiplier using the same post-hoc procedure. Expected pattern: multiplier may shrink as immigration rises (culling's benefit is offset by immigrant backfill, so TNR looks relatively more competitive).
+Repeat Experiment 1 at `base_immigration` ∈ {2, 6, 15}. For each immigration level, derive `cost(20)` using the same post-hoc procedure. Expected pattern: the exchange rate may fall under high immigration (immigrant backfill offsets culling's removal benefit, so each cat killed saves relatively fewer prey).
 
 **Experiment 3 — Feeding-ban sensitivity.**
-Repeat Experiment 1 at `food_multiplier` ∈ {0.3, 0.7, 1.0}. For each food level, derive the TNR effort multiplier. Expected pattern: multiplier may rise under feeding bans (fewer total cats, each cat removal matters more, so culling's lead expands).
+Repeat Experiment 1 at `food_multiplier` ∈ {0.3, 0.7, 1.0}. For each food level, derive `cost(20)`. Expected pattern: the exchange rate may rise under feeding bans (fewer total cats, each cat removal matters more for the surviving prey population).
 
-Statistical analysis: median and interquartile range across replicates. The multiplier is derived from the median trajectories at each effort level. Confidence in the multiplier is bounded by the IQR overlap of adjacent effort levels (if adjacent IQRs overlap heavily, the multiplier estimate is uncertain and should be reported as a range rather than a point value).
+Statistical analysis: median and interquartile range across replicates. For the exchange-rate metric, compute the ratio inside each replicate (not from medians) and then take the median across replicates — this avoids the bias from dividing median-numerator by median-denominator.
 
 ---
 
