@@ -82,6 +82,24 @@ If both orderings hold qualitatively, the model is behaving sensibly. If not, de
 
 ## Post-hoc multiplier analysis (headline finding)
 
+### Why cull @ 20 is the reference
+
+At initial N=300, 20 cats/month = 240/year = **80% annual coverage of the initial population**. This matches Gunther et al. (2022)'s field threshold — aggressive-but-realistic for a well-resourced local program. See the ODD §1 Purpose for full literature anchoring.
+
+Effort-to-coverage mapping at N=300:
+
+| cats/month | annual coverage |
+|---|---|
+| 5 | 20% |
+| 10 | 40% |
+| 15 | 60% (near McCarthy et al. 57% threshold) |
+| 20 | 80% (Gunther et al. threshold — reference) |
+| 25 | 100% |
+| 30 | 120% (operationally unrealistic) |
+| 40 | 160% (operationally unrealistic) |
+
+### Procedure
+
 After the Experiment 1 BehaviorSpace run completes, open the CSV in Python/R/Excel and compute:
 
 1. `T = median(cumulative-prey-deaths | strategy=cull, effort=20)` across the 30 replicates.

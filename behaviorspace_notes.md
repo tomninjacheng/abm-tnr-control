@@ -88,6 +88,8 @@ Both runs must produce bit-identical output. If not, there's a hidden source of 
 
 The headline finding is a single multiplier that quantifies "how much extra effort TNR needs to match culling's wildlife outcome."
 
+**Reference effort is 20 cats/month = 80% annual coverage of initial population**, which matches Gunther et al. (2022)'s field benchmark. See ODD §1 Purpose for the full literature anchoring. McCarthy et al. (2013)'s 57% annual-capture minimum maps to 15 cats/month at our density.
+
 **Procedure (post-hoc on Exp1 CSV):**
 
 1. Reference target: `T = median(cumulative-prey-deaths | strategy=cull, effort=20, over 30 reps)`.

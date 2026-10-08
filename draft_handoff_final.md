@@ -16,6 +16,8 @@ This document captures the design decisions, research question, and model specif
 
 **Primary outcome metric:** cumulative prey predation events over 120 months. The TNR effort multiplier is derived post-hoc as `smallest N such that TNR @ N produces ≤ cull @ 20 kills` divided by 20.
 
+**Why 20 cats/month as the reference.** At N=300 initial cats, 20/month = 240/year = **80% annual coverage of the initial population**. This matches Gunther et al. (2022), a 12-year Israeli TNR field study where 80% neutering coverage was the aggressive-but-realistic upper threshold a well-resourced local program could sustain. McCarthy et al.'s (2013) 57% annual-capture minimum maps to 15 cats/month at our density. The 0–40 sweep therefore covers: below minimum (0–10), near McCarthy's threshold (15), at Gunther's upper threshold (20), and above operational realism (25+). The reference is anchored to the field literature rather than being chosen arbitrarily.
+
 **Three possible answer shapes:**
 
 1. **Finite multiplier** (e.g., 2.5×) — TNR achieves equivalence at that factor of extra effort. Quantitative policy answer.

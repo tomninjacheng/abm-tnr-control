@@ -12,6 +12,8 @@ This model compares two stray cat management strategies — trap-neuter-return (
 
 **Research question (RQ-A, narrow):** How many cats per month must a TNR program process to match the 10-year cumulative wildlife outcome (cumulative prey predation events) of a culling program processing 20 cats/month? Does this "TNR effort multiplier" depend on immigration pressure and food availability?
 
+**Why the reference effort is 20 cats/month.** At our initial population of 300 cats, 20 cats/month = 240 processings per year = **80% annual coverage of the initial population**. This matches the Gunther et al. (2022) field benchmark from a 12-year Israeli TNR study: 80% neutering coverage was the aggressive-but-realistic upper threshold of a well-resourced local program (and was *still* insufficient when surrounding areas were untreated, which the sensitivity across `base_immigration` levels addresses). McCarthy et al. (2013)'s 57% annual-capture minimum threshold corresponds to 15 cats/month at our density. The 0–40 cats/month sweep therefore spans "well below the minimum" (0–10) through "aggressive but realistic" (15–20) up to "operationally unrealistic" (25+) for a real community program.
+
 **Primary outcome metric:** cumulative prey predation events over 120 months (direct count of cat-caused prey deaths). The multiplier is derived post-hoc as `smallest N such that median(TNR-kills at effort N) ≤ median(cull-kills at effort 20)`, divided by 20.
 
 **Three possible answer shapes, each informative:**

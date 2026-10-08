@@ -57,6 +57,14 @@ Pull up the deterministic projection values or your actual Exp1 output:
 
 ## Likely V2 (defending assumptions, alternatives, limitations) questions
 
+### Q: "Where did 20 cats per month come from? Is there a reference for it?"
+
+> "At our initial population of 300 cats on a 2.5 km × 2.5 km district, 20 cats per month corresponds to 240 processings per year — 80% annual coverage of the initial population. That matches Gunther et al. 2022, a 12-year TNR field study in Rishon-LeZion, Israel, where 80% neutering coverage was the aggressive-but-realistic upper threshold a well-resourced local program could sustain. McCarthy, Levine and Reed 2013 identified 57% annual capture as the minimum for sustained decline, which maps to 15 cats per month at our density. Our sweep from 0 to 40 therefore spans well-below-minimum through aggressive-but-realistic up to operationally unrealistic — so the comparison covers the policy-relevant range."
+
+### Q: "How is intervention intensity actually decided in practice?"
+
+> "Three frameworks. First, percent-of-population targets — the literature uses coverage percentages, with 57% as a lower bound from McCarthy et al. and 80% as an aggressive-but-achievable upper threshold from Gunther et al. Second, operational capacity — a community TNR clinic typically processes 20 to 50 cats per month regardless of coverage, driven by vet availability and trap inventory. Third, opportunistic — many programs catch whatever is brought in without an explicit target. Our reference anchors to the first framework and we sweep across the second's typical range."
+
 ### Q: "That juvenile mortality rate is really high. Isn't 35% per month unrealistic?"
 
 > "It's at the high end of the feral kitten mortality literature, which spans 50% to 90% first-year mortality. We adopted the high end deliberately. V1 doesn't explicitly model density-dependent processes — disease spreading in dense colonies, maternal food stress, kitten predation by other cats — but these are documented drivers of feral kitten death. We absorb them into this single rate. The alternative was adding three or four density-dependent mechanisms, which the proposal feedback explicitly asked us to cut. Per-female fecundity is held at literature-consistent values — two litters a year, four kittens per litter — so the biology that reviewers would check first is preserved."
@@ -122,6 +130,7 @@ Describe: what you proposed, what your teammate proposed (or what the alternativ
 - [ ] Opening (60s) memorised
 - [ ] Can describe each of the 7 phases without reading
 - [ ] Can state the three answer shapes for the multiplier
+- [ ] Can defend the 20 cats/month reference (Gunther et al. 80% benchmark)
 - [ ] Can defend Set B rate calibration (specifically the high kitten mortality)
 - [ ] Can defend food-driven immigration framing
 - [ ] Can defend removing hybrid, catchability, prey habitat
