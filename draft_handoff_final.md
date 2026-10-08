@@ -1,8 +1,10 @@
-# Handoff: Agent-Based Model for Stray Cat Management with Prey Species Impact — V1
+# Handoff: Agent-Based Model for Stray Cat Management with Prey Species Impact — V1 (Australian Context)
 
-This document captures the design decisions, research question, and model specification for a university project building an agent-based model (ABM) that compares stray cat management strategies by their effect on a native prey species. It is written for another collaborator (or future-self) to pick up and continue from.
+This document captures the design decisions, research question, and model specification for a university project building an agent-based model (ABM) that compares stray cat management strategies by their effect on a native prey species in an Australian urban setting. It is written for another collaborator (or future-self) to pick up and continue from.
 
-**Current state: V1 design is locked and validated against a non-spatial deterministic projection. ODD rewritten. Ready for NetLogo implementation.**
+**Current state: V1 design is locked, calibration anchored to Australian primary sources (Denny & Dickman 2010 for cat demographics; Rowley 1965 / Russell & Rowley 1993 for Superb Fairy-wren as anchor prey), validated against a non-spatial deterministic projection. ODD rewritten. Ready for parameter-sensitivity analysis.**
+
+**Primary parameter anchoring document: `parameter_anchoring.md`** — maps every quantitative parameter in the model to a specific page/number in Denny & Dickman (2010) or the Fairy-wren literature. Read it before touching any rate.
 
 ---
 
@@ -165,9 +167,38 @@ Decisions made in response to the marker feedback and advisor review. Each is do
 
 **Why kept: food dynamics for immigration.** Without food-mediated immigration, culling and TNR differ only in *how* cats are removed, not in dynamic consequence. The vacuum-effect dynamic — culling creates food "vacancies" that pull immigrants faster than TNR — is central to the TNR-vs-culling comparison the research question asks about. Removing food dynamics would make the comparison trivially one-sided. Food in V1 does NOT drive mortality — only immigration.
 
-**Why Set B rates (p_birth = 0.17/mo, d_juvenile = 0.25/mo, d_adult = 0.025/mo).** Per-female fecundity is held at literature-consistent values (~2 litters/year, 4 kittens/litter). Juvenile mortality at 0.25/month gives ~18% survival to 6 months — low-moderate end of the feral literature. This produces an internal R₀ ≈ 1.5, so unmanaged populations grow ~20% per year under food-driven immigration, matching the 20–50% annual growth range documented in feral colonies (Nutter et al. 2004; Boone et al. 2019). The high juvenile mortality implicitly absorbs density-dependent processes (disease transmission, intraspecific predation on kittens, maternal food stress) that we do not model explicitly — the alternative would add state and mechanisms the proposal feedback asked us to cut.
+**Why Set B rates (p_birth = 0.17/mo, d_juvenile = 0.25/mo, d_adult = 0.025/mo) — anchored to Denny & Dickman (2010).**
+
+Every rate in Set B maps directly to a line in the Australian cat-ecology review:
+
+| Rate | Produces | Denny & Dickman anchor | Page |
+|---|---|---|---|
+| `d_juvenile_cat = 0.25` | 17.8% survival to 6 mo | Mirmovitch 1995 urban feral (7/43 = 16%) | §3.7, p.18 |
+| `d_adult_cat = 0.025` | mean adult life 3.3 yr | Warner 1985: "beyond 3–5 yr rare" | §3.8, p.19 |
+| `p_birth = 0.17/mo` | 2.04 litters/yr | Jones & Coman 1982a: 2 litters/yr | §3.5, p.17 |
+| `litter_size = 4` | — | Deag 2000: 3.88; prenatal 4.1–4.7 | §3.6, p.18 |
+
+Combined, these produce internal R₀ ≈ 1.5 → ~20% annual unmanaged growth. This is slower than the 8.5-month population-doubling Short & Turner (2005) measured at Heirisson Prong WA (Denny & Dickman p.19) — but that's a resource-rich pulse scenario, not an urban-feral baseline. The high juvenile mortality implicitly absorbs density-dependent processes (disease transmission, intraspecific predation on kittens, maternal food stress) that we do not model explicitly.
+
+**Why initial density 48 cats/km² (300 cats on 6.25 km²).** Wilson et al. 1994 reported Canberra highly-modified habitat densities of 19, 38, 90 cats/km² — our density sits in the middle of this range (Denny & Dickman Table 1, p.13).
 
 **Why logistic prey reproduction + prey-years-lost metric.** Without a regulator, prey rates give R0 ≈ 2.45, so prey grow 50%/year unchecked (500 → 60,000 over 10 years). Logistic reproduction with `K_prey = 500` prevents explosion. Combined with prey-years-lost metric (which is monotonic in harm), the model produces answerable dynamics that the deterministic projection confirms.
+
+**Why Superb Fairy-wren (*Malurus cyaneus*) as the anchor prey.** Three reasons:
+
+1. **Data density.** Rowley (1965) is the foundational life-history monograph (clutch size 3.2, max 3 broods/yr, max longevity 10 yr 4 mo, from Gungahlin ACT). Russell & Rowley (1993) on the closely related Splendid Fairy-wren gives adult annual survival (M: 0.70, F: 0.59) and juvenile first-year survival (0.31, range 0.11–0.59). The ANU 30-year Canberra long-term dataset gives normal-year adult winter loss of ~20%.
+2. **Ecological realism.** Superb Fairy-wrens are common in Melbourne urban parks and gardens today — the system our model simulates. The alternative Melbourne-local anchor, Eastern Barred Bandicoot, is now confined to predator-proof fenced sanctuaries on the mainland, so cat–prey co-occurrence doesn't apply.
+3. **Vulnerability profile.** Under Dickman's (1996) rank-scoring system in Denny & Dickman (2010) Table 4 (p.25): ~10 g (score 3), terrestrial ground-forager (habitat score 3, behaviour score 2) — cumulative "high" vulnerability.
+
+**Prey-parameter anchor mapping:**
+
+| Model parameter | Value | Fairy-wren anchor |
+|---|---|---|
+| `d_adult_prey = 0.05/mo` | annual survival 0.54 | Russell & Rowley 1993: 0.59 (F), 0.70 (M); model value absorbs cat-pressure in Melbourne urban that is absent from the WA forest reference |
+| `p_prey_birth × litter 2 = 0.5/mo offspring` | ~6 offspring/F/yr | Rowley 1965: 3 broods × 3.2 eggs × ~60% fledging ≈ 5.8/yr |
+| `K_prey = 500` | ~0.8 adults/ha urban | Parsons et al. 2007 / BirdLife urban territory 1.4 ha → ~1.5 adults/ha in good habitat × 625 ha × ~35% suitable habitat ≈ 325–470 |
+
+**Known limitation.** Cats take Fairy-wrens disproportionately as nestlings/fledglings rather than adults — our `p_predation` is an *effective* pooled rate, not a literal per-adult kill probability. Flagged in the limitations list and in the viva script.
 
 **Why food capacity scaled down from earlier iterations.** Earlier capacity values (total ~8,000 units) were so large that cats consumed only ~4% of monthly regen, so immigration stayed near max regardless of colony state — the food-driven dynamic didn't fire. Scaled-down values (total ~1,225) produce a visible immigration response: ~3/month at full colony, ~6/month at empty.
 
@@ -270,6 +301,28 @@ Prioritised list for V2 and beyond:
 ---
 
 ## 9. References
+
+### Primary anchor references
+
+Denny, E. A. & Dickman, C. R. (2010). *Review of Cat Ecology and Management Strategies in Australia*. Invasive Animals Cooperative Research Centre, Canberra. ISBN 978-0-9806716-6-7. **[Primary cat-demography anchor.]**
+
+Rowley, I. C. R. (1965). The life history of the Superb Blue Wren, *Malurus cyaneus*. *Emu*, 64(4), 251–297. **[Primary Fairy-wren life-history anchor.]**
+
+Russell, E. M. & Rowley, I. C. R. (1993). Demography of the cooperatively breeding Splendid Fairy-wren, *Malurus splendens*. *Australian Journal of Zoology*, 41(5), 475–505. **[Closest demographic analogue for annual survival rates.]**
+
+### Secondary references (cited in Denny & Dickman 2010)
+
+Jones, E. & Coman, B. J. (1982a). Ecology of the feral cat, *Felis catus* (L.), in south-eastern Australia. *Wildlife Research*, 8, 537–547.
+
+Mirmovitch, V. (1995). Spatial organisation of urban feral cats in Jerusalem. *Wildlife Research*, 22, 299–310.
+
+Warner, R. E. (1985). Demography and movements of free-ranging domestic cats in rural Illinois. *Journal of Wildlife Management*, 49, 340–346.
+
+Wilson, G. R., Dexter, N., O'Brien, P. & Bomford, M. (1994). *Pest Animals in Australia*. Bureau of Rural Resources, Canberra.
+
+Parsons, H., Major, R. E. & French, K. (2007). Species interactions and habitat associations of birds inhabiting urban areas of Sydney, Australia. *Austral Ecology*, 32(2), 217–226.
+
+### Model-structure references
 
 Belsare, A. V. & Vanak, A. T. (2020). Modelling the challenges of managing free-ranging dog populations. *Scientific Reports*, 10, 18874.
 

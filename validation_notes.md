@@ -2,6 +2,7 @@
 
 **Date:** 2026-10-08
 **Reference projection:** `scratchpad/v1_projection_v2.py`
+**Parameter anchoring:** `parameter_anchoring.md` (Denny & Dickman 2010 + Rowley 1965 / Russell & Rowley 1993)
 
 ## Research question (RQ-A)
 

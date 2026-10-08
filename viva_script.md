@@ -1,9 +1,13 @@
-# Viva Script — V1 Cat Management ABM
+# Viva Script — V1 Cat Management ABM (Australian Context)
 
 **Target length:** ~5 min demonstration + ~10 min individual Q&A.
 **Grading criteria:** V1 understanding of model, V2 defence of assumptions and alternatives, V3 ownership of personal contributions.
 
 Use this as a rehearsal script. Memorise the opening and the five likely-question talking points; the rest is for ad-hoc reference.
+
+**Context anchoring (memorise these two citations):**
+- **Cat demographics:** Denny & Dickman (2010), *Review of Cat Ecology and Management Strategies in Australia*, Invasive Animals CRC — specifically §3.5–3.9 for breeding/survival rates, and Table 1 (p.13) for Australian cat densities.
+- **Prey species:** Superb Fairy-wren (*Malurus cyaneus*), Rowley (1965) foundational monograph + Russell & Rowley (1993) demographic data from closely related Splendid Fairy-wren.
 
 ---
 
@@ -19,7 +23,7 @@ Use this as a rehearsal script. Memorise the opening and the five likely-questio
 
 Live demonstration while you say:
 
-> "The model is a 50×50 grid representing a 2.5 km × 2.5 km urban district. Each cell can hold food — four tiers from zero (food deserts) through low, medium, up to high at three commercial-zone hotspots. The yellow arrows are intact cats; after TNR they turn red. White dots are prey.
+> "The model is a 50×50 grid representing a Melbourne-scale urban district of 2.5 km × 2.5 km. Starting with 300 cats on 625 hectares — 48 cats per square kilometre, which sits inside the 19 to 90 per square kilometre range Wilson et al. 1994 measured in Canberra highly-modified habitats, reported in Denny & Dickman 2010. Each cell can hold food — four tiers from zero food-deserts through low, medium, up to high at three commercial-zone hotspots. The yellow arrows are intact cats; after TNR they turn red. White dots are prey — Superb Fairy-wrens, the anchor species.
 >
 > Each monthly tick runs seven phases in order: cats move toward food and feed, immigration draws new cats from a Poisson distribution scaled by available food, cells regenerate food, prey random-walk, each prey rolls against predation if an adult cat is adjacent, cats and prey reproduce and age-die, and intervention processes up to N intact adult cats under the chosen strategy. There's a 12-month burn-in before intervention starts."
 
@@ -69,11 +73,15 @@ Pull up the deterministic projection values or your actual Exp1 output:
 
 ### Q: "What's your juvenile mortality rate, and why?"
 
-> "0.25 per month, giving about 18% survival to 6 months. That's at the low-moderate end of the feral kitten mortality literature, which spans 10% to 50% survival to independence. The rate was calibrated so internal R₀ is roughly 1.5 — unmanaged populations grow about 20% per year, which matches the feral biology range of 20 to 50% annual growth in good conditions documented in Nutter et al. and Boone et al. The elevated mortality implicitly absorbs density-dependent processes we don't model explicitly — disease spread in dense colonies, intraspecific predation on kittens, maternal food stress. Per-female fecundity is held at literature-consistent values of two litters a year and four kittens per litter, so the quantity reviewers check first is preserved."
+> "0.25 per month, giving (1 minus 0.25) to the sixth power equals 17.8% survival to 6 months. The direct anchor is Mirmovitch 1995 in Jerusalem: seven out of forty-three urban feral kittens survived to six months — 16%, essentially the number our rate produces. That's cited in Denny & Dickman 2010 section 3.7, page 18. Combined with 0.17 monthly birth probability — which gives 2.04 litters per year, matching Jones & Coman 1982a's two litters per year — and litter size four, which sits in the 4.1 to 4.7 prenatal range Denny & Dickman report, internal R₀ comes out around 1.5. That gives roughly 20% annual unmanaged growth. The 0.025 adult rate means mean adult lifespan 3.3 years, consistent with Warner 1985's 'free-ranging survival beyond 3 to 5 years is rare.' Every one of our four cat demographic parameters maps to a specific line in Denny & Dickman."
 
 ### Q: "Why not use the vacuum effect through territorial exclusion rather than food?"
 
 > "The vacuum effect as described in the literature is an empirical pattern — removing residents leads to more immigrants arriving — and the mechanism behind it hasn't been experimentally isolated. Candidates include territorial vacancy, unconsumed food, faded scent, or reduced intraspecific competition. We implement it through food consumption because food is directly measurable in the model — every cell tracks it, every cat consumes it. Territorial exclusion would require tracking per-cat territorial claims and immigrants would have to detect them, adding state and mechanism without changing the aggregate immigration dynamic our research question measures."
+
+### Q: "Why Superb Fairy-wren as the prey species? Why not a mammal?"
+
+> "Three reasons. First, data availability — Rowley 1965 gives us a foundational life-history monograph from Gungahlin ACT with clutch size, broods per year, longevity. Russell & Rowley 1993 on the closely related Splendid Fairy-wren gives adult annual survival at 0.59 for females, 0.70 for males — the closest demographic analogue we have. The ANU 30-year Canberra dataset gives us normal-year adult winter loss around 20%, which lets us sanity-check. Second, ecological realism — Fairy-wrens genuinely live in urban Melbourne alongside stray cats, which is exactly the system our model simulates. We considered Eastern Barred Bandicoot but on the Victorian mainland they're now almost entirely inside predator-proof fences, so the cat-prey co-occurrence we model doesn't apply. Third, vulnerability — under Dickman's rank-scoring system in Table 4 of Denny & Dickman, Fairy-wrens score high: 10 grams, terrestrial ground-forager, urban habitat, no defences. One known caveat we flag in limitations — cats mostly take Fairy-wrens as nestlings and fledglings rather than adults, so our p-predation represents an effective pooled rate rather than a literal per-adult kill probability."
 
 ### Q: "Why no catchability heterogeneity? Belsare & Vanak have it."
 
@@ -81,7 +89,7 @@ Pull up the deterministic projection values or your actual Exp1 output:
 
 ### Q: "What are the model's limitations?"
 
-> "Six that we'd flag honestly. First, prey are generic — no specific taxon with calibrated life history. Second, cat sex is tracked but we don't model male-female proximity for mating; we use a direct monthly birth probability. Third, cats can't learn to avoid traps. Fourth, intervention is random across the grid; real programs target high-density areas. Fifth, sterilised cats hunt at the same rate as intact cats by default — that's the conservative assumption for TNR, so any TNR disadvantage we report is an upper bound. Sixth, the carrying-capacity dynamics come from juvenile mortality + food-driven immigration rather than an explicit density mechanism, so we can't tune cat density independently of mortality. All six are documented as future extensions."
+> "Six that we'd flag honestly. First, our Fairy-wren predation is applied uniformly across the population, but real cat impact on Fairy-wrens is dominated by nest predation on fledglings rather than adult kills. Our p-predation represents an *effective* pooled rate. Second, cat sex is tracked but we don't model male-female proximity for mating; we use a direct monthly birth probability. Third, cats can't learn to avoid traps. Fourth, intervention is random across the grid; real programs target high-density areas. Fifth, sterilised cats hunt at the same rate as intact cats by default — that's the conservative assumption for TNR, so any TNR disadvantage we report is an upper bound. Sixth, the carrying-capacity dynamics come from juvenile mortality + food-driven immigration rather than an explicit density mechanism, so we can't tune cat density independently of mortality. All six are documented as future extensions."
 
 ### Q: "What if sterilised cats hunt less than intact?"
 
@@ -133,7 +141,9 @@ Describe: what you proposed, what your teammate proposed (or what the alternativ
 - [ ] Can describe each of the 7 phases without reading
 - [ ] Can state the headline exchange-rate finding and interpret the units
 - [ ] Can defend the 20 cats/month reference (Gunther et al. 80% benchmark)
-- [ ] Can defend Set B rate calibration (specifically d-juvenile = 0.25 → R₀ ≈ 1.5)
+- [ ] Can defend Set B rate calibration (specifically d-juvenile = 0.25 → Mirmovitch 1995's 16% urban kitten survival; R₀ ≈ 1.5)
+- [ ] Can cite Denny & Dickman 2010 page numbers for cat demographics (§3.5–3.9, p.17–20; Table 1 p.13 density; Table 4 p.25 vulnerability)
+- [ ] Can defend Superb Fairy-wren as anchor prey (Rowley 1965, Russell & Rowley 1993) and the nest-predation caveat
 - [ ] Can defend food-driven immigration framing
 - [ ] Can defend removing hybrid, catchability, prey habitat
 - [ ] Can defend 100% sterilised hunting rate as conservative
