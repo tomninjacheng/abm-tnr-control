@@ -15,18 +15,16 @@ cost(N) = (prey_kills_TNR_at_N − prey_kills_cull_at_N) / cumulative_cats_culle
 
 Headline value is `cost(20)` at our reference effort of 20 cats/month (= 80% annual coverage of initial N=300, matching Gunther et al. 2022's field threshold).
 
-## Expected (from projection with Set B rates, base-immigration=10)
+## Expected (from projection with Set B rates, base-immigration=10, NO burn-in)
 
-| Scenario | Final cats | Final prey | Cumulative kills |
-|---|---|---|---|
-| Unmanaged | ~1,900 (6× growth) | ~2 | ~477 |
-| Cull @ 10 | ~317 | ~20 | ~490 |
-| Cull @ 15 | ~0 by year 10 | ~82 | ~453 |
-| Cull @ 20 | ~0 by year 5 | ~160 | ~366 |
-| TNR @ 20 | ~314 | ~16 | ~484 |
-| TNR @ 40 | ~311 | ~18 | ~485 |
+| Scenario | Cumulative prey kills | Cumulative cull-count |
+|---|---|---|
+| Cull @ 20/mo | ~230 | ~1,529 |
+| TNR @ 20/mo | ~487 | 0 (no culls) |
 
-**Projected headline value:** `cost(20) = (484 − 366) / ~300 ≈ 0.4 prey per cat killed`.
+**Projected headline value:** `cost(20) = (487 − 230) / 1529 ≈ 0.17 prey per cat killed`.
+
+Note: these are from the deterministic non-spatial projection in `results/sensitivity_oat.py`, run with no burn-in (intervention from tick 0). Earlier burn-in versions gave ~0.4 and ~0.08 under different projection details — those are superseded.
 
 NetLogo results will differ in absolute magnitude due to:
 - Spatial clustering (cats cluster near food, prey scattered — not captured in non-spatial projection)

@@ -105,7 +105,8 @@ def run(p: Params, strategy='none', processed=0, months=120):
         prey_juv = new_prey_juv
         prey_adult *= (1 - p.d_prey_adult)
 
-        if t >= 12 and strategy != 'none' and processed > 0:
+        # No burn-in: intervention runs every tick from month 0.
+        if strategy != 'none' and processed > 0:
             take = min(processed, cat_adult_intact)
             if strategy == 'tnr':
                 cat_adult_intact -= take

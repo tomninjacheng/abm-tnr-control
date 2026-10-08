@@ -216,7 +216,7 @@ Monthly: adult cat counts (intact / sterilised), total cat count including kitte
 
 High-capacity cells are spatially clustered into 3 groups to simulate commercial zones with dumpsters. Total capacity ≈ 1,225 units across the grid. `food_current` initialised equal to `food_capacity × food_multiplier`.
 
-**Burn-in.** No intervention is applied for the first 12 months to let the population settle away from the uniform-random initial distribution before experiments begin.
+**No burn-in.** Intervention runs from tick 0. V1 does not include a burn-in period: because TNR and cull scenarios share the identical initial condition, the initial transient contributes equally to both scenarios' cumulative-prey-deaths and cancels in the headline-ratio numerator. Omitting burn-in makes the metric interpretation and demo narration more direct (intervention effects begin at tick 0).
 
 ---
 

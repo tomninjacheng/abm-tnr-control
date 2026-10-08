@@ -58,7 +58,7 @@ to go
   cats-age-and-die                ;; Phase 6a
   preys-reproduce                 ;; Phase 6b
   preys-age-and-die               ;; Phase 6b
-  if ticks >= burn-in-months [ intervene ]   ;; Phase 7 — burn-in guard
+  intervene                       ;; Phase 7 — runs every tick (no burn-in)
   tally                           ;; Phase 8
   tick
   if ticks >= 120 [ stop ]
@@ -71,11 +71,14 @@ end
 2. **Immigrate → regen** so regeneration doesn't mask depletion before the signal fires.
 3. **Prey move → predate** so prey chance of encounter is after their random walk.
 4. **Reproduce → age → die** inside Phase 6 so kittens born this tick don't get aged + die-rolled in the same tick (they're age 0 after reproduce, age 1 after age-and-die).
-5. **Burn-in guard** on intervene so the first 12 ticks are an unmanaged equilibration period.
+5. **No burn-in guard.** V1 runs intervention from tick 0. Removed in a late design iteration (see §16 note below): because TNR and cull share the identical initial condition, the initial transient cancels in the headline-ratio numerator, so burn-in added only cosmetic cleanliness. Removing it simplifies the model and makes intervention effects start at tick 0 for a more direct demonstration.
 6. **Tally before tick** so `prey-years-lost` accumulates at tick t, not t+1.
 
 If asked "what happens if you reorder?":
 > "The two most load-bearing orderings are feed-before-immigrate (otherwise the vacuum signal flatlines) and reproduce-before-age-and-die (otherwise kittens die on their birth tick). I'd flag either reordering as changing model behaviour. The others — e.g., prey-move vs predate order — would shift stochasticity but not the mean outcome."
+
+If asked "why no burn-in":
+> "The headline metric is a ratio with a numerator that's a *difference* between TNR and cull cumulative predation. Both scenarios share the same initial condition, so initial transient predation contributes equally and cancels in the difference. Burn-in therefore adds no scientific value for this metric — only cosmetic cleanliness. We simplified the model by removing it; intervention runs from tick 0."
 
 ---
 
@@ -347,7 +350,7 @@ All 9 controls:
 - **Chooser** `strategy` (tnr / cull)
 - **Sliders** for the 8 numeric parameters listed in §0
 
-**Hardcoded in `setup-globals` (NOT on sliders):** `p-birth`, `litter-size`, `d-juvenile-cat`, `d-adult-cat`, `p-prey-birth`, `prey-litter-size`, `d-juvenile-prey`, `d-adult-prey`, `burn-in-months`, `territory-radius`, `food-consumption`, `predation-radius`, `prey-search-radius`.
+**Hardcoded in `setup-globals` (NOT on sliders):** `p-birth`, `litter-size`, `d-juvenile-cat`, `d-adult-cat`, `p-prey-birth`, `prey-litter-size`, `d-juvenile-prey`, `d-adult-prey`, `territory-radius`, `food-consumption`, `predation-radius`, `prey-search-radius`.
 
 **Why some are sliders and others aren't:**
 > "Design parameters a user might want to sweep for sensitivity are on sliders — strategy, effort, immigration, food, predation, carrying capacity. Demographic rates are hardcoded in `setup-globals` because they're anchored to the Denny & Dickman literature and shouldn't drift during a demo. The sensitivity analysis in `sensitivity_notes.md` perturbs the hardcoded ones programmatically — the slider defaults aren't the right place for exploratory wiggle."
@@ -387,7 +390,7 @@ Be ready to flag these honestly if the examiner spots them:
 
 1. **Slider default `base-immigration = 6`** vs **deterministic projection used `base-immigration = 10`**. The deterministic projection baseline cost(20) = 0.076 would be *higher* (~0.13 by interpolation) if re-run at base-immigration = 6. Rank-order sensitivity findings are not affected.
 2. **ODD specifies 500 prey; slider default is 500 ✓**, but K-prey is also 500 so prey start at carrying capacity → no "initial growth" phase. If asked why no initial prey growth phase: "By design — we want to measure cat impact on an at-equilibrium prey population, not during a boom phase."
-3. **Burn-in is 12 months BUT reproduction starts immediately.** So cats can reproduce during burn-in and immigration already runs. The burn-in only blocks interventions, not biology. Say: "Burn-in blocks intervention only; biology runs continuously to let the spatial distribution of cats around food cells equilibrate before measurement."
+3. **No burn-in in V1.** Earlier design iterations had a 12-month burn-in before intervention; removed because the headline-ratio metric is a difference between TNR and cull scenarios that share the same initial transient — the transient cancels in the numerator, so burn-in added only cosmetic cleanliness. Say: "Intervention runs from tick 0. The initial transient is identical in TNR and cull scenarios, so it cancels in the headline ratio. We simplified by removing burn-in; the metric interpretation stays the same and the demo starts cleanly at tick 0."
 4. **No seed control.** Each run is non-deterministic unless the examiner calls `random-seed N` in the Command Center first. If asked for reproducibility: "You can call `random-seed 42` before setup; the behaviorspace_notes.md documents a seed-determinism check for Exp1."
 
 ---

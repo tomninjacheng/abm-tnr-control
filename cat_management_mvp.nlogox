@@ -29,8 +29,6 @@ globals [
   d-juvenile-prey         ;; monthly death prob for prey age < 2 (default 0.30)
   d-adult-prey            ;; monthly death prob for prey age >= 2 (default 0.05)
 
-  burn-in-months          ;; number of ticks before intervention starts (default 12)
-
   ;; --- internal state / counters ---
   current-immigration-rate
   immigrants-this-month
@@ -90,8 +88,6 @@ to setup-globals
   set prey-litter-size 2
   set d-juvenile-prey 0.30
   set d-adult-prey 0.05
-
-  set burn-in-months 12
 
   ;; Internal counters
   set current-immigration-rate 0
@@ -181,7 +177,7 @@ to go
   cats-age-and-die                ;; Phase 6a
   preys-reproduce                 ;; Phase 6b
   preys-age-and-die               ;; Phase 6b
-  if ticks >= burn-in-months [ intervene ]   ;; Phase 7 — burn-in guard
+  intervene                       ;; Phase 7 — runs every tick (no burn-in)
   tally                           ;; Phase 8
   tick
   if ticks >= 120 [ stop ]

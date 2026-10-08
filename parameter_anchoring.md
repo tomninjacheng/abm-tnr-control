@@ -140,7 +140,6 @@ That is substantially faster than our previous target of 20%, but much slower th
 ### What we lose by removing age structure
 - No kitten-only mortality (absorbed into shortened mean lifespan)
 - No "adults only hunt / are trappable" rule — must either apply to all cats, or add a non-age boolean (e.g., `can-hunt?` = true for all)
-- The 12-month burn-in before intervention becomes less critical because there's no age-structure to equilibrate
 
 ### Decisions this proposal needs
 1. **Confirm anchor prey species.** My recommendation: Eastern Barred Bandicoot (Melbourne, endangered, documented cat impact).

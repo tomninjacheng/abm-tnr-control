@@ -270,18 +270,25 @@ These are sanity checks, not parameter fitting.
 
 ## 7. Validation Projection (Pre-implementation)
 
-Before implementation, a non-spatial deterministic projection of V1 aggregate dynamics was run for 120 months under scenarios including unmanaged, TNR @ 20/mo, and cull @ 20/mo (plus hybrid, which has since been dropped from V1). Script is in the project scratchpad (`v1_projection.py`).
+Before implementation, a non-spatial deterministic projection of V1 aggregate dynamics was run for 120 months under TNR @ 20/mo and cull @ 20/mo at the Günther et al. (2022) 80% coverage reference effort. Current script: `results/sensitivity_oat.py` (includes both the baseline and the OAT sensitivity perturbations).
 
-**Findings.**
+**Headline finding at the reference effort (no burn-in, Set B rates, base-immigration=10):**
 
-- **Primary metric (prey-years lost vs no-cat baseline) is monotonic in harm:** unmanaged 79.5% > TNR 77.3% > culling 55.9%. Clean separation of strategies.
-- **Food-driven immigration responds:** 3.3/month at full unmanaged colony → 6.0/month at culled-empty colony.
-- **Logistic prey reproduction keeps prey bounded** (previously would have grown to 60k).
-- **Internal cat R0 ≈ replacement:** unmanaged adult cat count grows 297 → 344 over 10 years from immigrant accumulation only.
-- **At 20/month, culling fully exterminates cats** by month 24; TNR barely dents the population (344 → 204). Interesting middle-ground dynamics live at 5–15/month; the Experiment 1 sweep (0–40/5) covers this.
-- **At 20/month, TNR saves negligible prey vs unmanaged** (77% vs 79% deficit). This is a real finding worth reporting — it directly addresses the research question.
+| Scenario | Cumulative prey kills | Cumulative cull count |
+|---|---|---|
+| Cull @ 20/mo | ~230 | ~1,529 |
+| TNR @ 20/mo | ~487 | 0 |
 
-The projection confirms V1 is answerable, monotonic, and produces policy-relevant findings. Ready for NetLogo implementation.
+**cost(20) = (487 − 230) / 1529 ≈ 0.17 prey saved per cat killed.**
+
+**Supporting findings.**
+
+- **Food-driven immigration responds mechanistically** to colony state: suppressed when cats fully consume available food, elevated when cats are removed.
+- **Logistic prey reproduction keeps prey bounded** at K-prey rather than growing unchecked.
+- **OAT sensitivity across all 10 parameters** keeps cost(20) in the range 0.09–0.33 — strictly positive, no sign flips. See `sensitivity_notes.md` and `results/sensitivity_tornado.png`.
+- **Pre-registered sensitivity predictions confirmed:** cost(20) decreases with higher immigration; increases with less food.
+
+The projection confirms V1 is answerable, produces a policy-relevant finding, and is robust to parameter uncertainty within the anchored ranges. Full NetLogo BehaviorSpace runs will refine absolute magnitudes.
 
 ---
 
