@@ -30,6 +30,19 @@ output/
 *.pdf
 !docs/**/*.png
 
+# --- Exceptions: committed deliverables ---
+# Note: !results/foo requires the parent `results/` ignore pattern to not
+# fully negate — git honours deeper negations if the directory itself isn't
+# excluded. To make the sensitivity exceptions work we must un-ignore the
+# directory first, then re-ignore everything inside it, then un-ignore the
+# specific files we want.
+!results/
+results/*
+!results/sensitivity_oat.py
+!results/sensitivity_oat_results.csv
+!results/sensitivity_oat_results.json
+!results/sensitivity_tornado.png
+
 # --- Environment / local config ---
 .env
 .env.local

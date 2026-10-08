@@ -79,6 +79,16 @@ Pull up the deterministic projection values or your actual Exp1 output:
 
 > "The vacuum effect as described in the literature is an empirical pattern — removing residents leads to more immigrants arriving — and the mechanism behind it hasn't been experimentally isolated. Candidates include territorial vacancy, unconsumed food, faded scent, or reduced intraspecific competition. We implement it through food consumption because food is directly measurable in the model — every cell tracks it, every cat consumes it. Territorial exclusion would require tracking per-cat territorial claims and immigrants would have to detect them, adding state and mechanism without changing the aggregate immigration dynamic our research question measures."
 
+### Q: "Did you do any sensitivity analysis around your anchored parameters?"
+
+> "Yes. We ran one-at-a-time sensitivity on all ten substantive parameters — perturbing each at ±25% for the Denny & Dickman-anchored demographic rates, and ±50% for the weakly-anchored structural parameters like `base-immigration` and `p-predation`. Results are in `sensitivity_notes.md` and the tornado chart is in `results/sensitivity_tornado.png`.
+>
+> The headline is that cost(20) is **sensitive-but-ordered**: across all perturbations, the value stays in the range −0.01 to 0.17, with no robust sign flip. The ranking by sensitivity is `base_immigration` first, then `d_juvenile_cat`, then `food_cap_total` and `p_prey_birth`. The least-sensitive parameter is `K_prey` — which is reassuring because K_prey is our weakest-anchored parameter.
+>
+> Two findings worth flagging. First, two patterns we pre-registered in `behaviorspace_notes.md` were confirmed: cost(20) decreases as immigration rises, and cost(20) increases as food availability falls. Second, at the lower bound of d_juvenile_cat — which corresponds to Mirmovitch 1995's exact 16% urban kitten survival — the exchange rate is essentially zero. We flag this honestly: the TNR vs cull wildlife-cost gap depends meaningfully on kitten survival, and under optimistic survival assumptions the two strategies converge for wildlife outcomes.
+>
+> Caveat: this is the deterministic non-spatial projection, not the NetLogo spatial ABM. We expect the ranking to transfer but absolute magnitudes to shift. The follow-up is to re-run under BehaviorSpace at perturbed values."
+
 ### Q: "Why Superb Fairy-wren as the prey species? Why not a mammal?"
 
 > "Three reasons. First, data availability — Rowley 1965 gives us a foundational life-history monograph from Gungahlin ACT with clutch size, broods per year, longevity. Russell & Rowley 1993 on the closely related Splendid Fairy-wren gives adult annual survival at 0.59 for females, 0.70 for males — the closest demographic analogue we have. The ANU 30-year Canberra dataset gives us normal-year adult winter loss around 20%, which lets us sanity-check. Second, ecological realism — Fairy-wrens genuinely live in urban Melbourne alongside stray cats, which is exactly the system our model simulates. We considered Eastern Barred Bandicoot but on the Victorian mainland they're now almost entirely inside predator-proof fences, so the cat-prey co-occurrence we model doesn't apply. Third, vulnerability — under Dickman's rank-scoring system in Table 4 of Denny & Dickman, Fairy-wrens score high: 10 grams, terrestrial ground-forager, urban habitat, no defences. One known caveat we flag in limitations — cats mostly take Fairy-wrens as nestlings and fledglings rather than adults, so our p-predation represents an effective pooled rate rather than a literal per-adult kill probability."
@@ -144,6 +154,8 @@ Describe: what you proposed, what your teammate proposed (or what the alternativ
 - [ ] Can defend Set B rate calibration (specifically d-juvenile = 0.25 → Mirmovitch 1995's 16% urban kitten survival; R₀ ≈ 1.5)
 - [ ] Can cite Denny & Dickman 2010 page numbers for cat demographics (§3.5–3.9, p.17–20; Table 1 p.13 density; Table 4 p.25 vulnerability)
 - [ ] Can defend Superb Fairy-wren as anchor prey (Rowley 1965, Russell & Rowley 1993) and the nest-predation caveat
+- [ ] Can show the tornado chart and name the top-3 most-sensitive parameters (base_imm, d_juv_cat, food_cap_total)
+- [ ] Can state the "sensitive-but-ordered" robustness verdict and the near-zero case at d_juv low bound
 - [ ] Can defend food-driven immigration framing
 - [ ] Can defend removing hybrid, catchability, prey habitat
 - [ ] Can defend 100% sterilised hunting rate as conservative
