@@ -6,11 +6,21 @@ Following the ODD (Overview, Design concepts, Details) protocol standard (Grimm 
 
 ## 1. Purpose
 
-This model compares two stray cat management strategies — trap-neuter-return (TNR) and culling — in terms of their effects on a co-occurring native prey species over a 10-year period, at matched intervention effort. The prey species is generic and can represent ground-nesting birds, small reptiles, or small mammals depending on parameter calibration.
+This model compares two stray cat management strategies — trap-neuter-return (TNR) and culling — in terms of their effects on a co-occurring native prey species over a 10-year period. The prey species is generic and can represent ground-nesting birds, small reptiles, or small mammals depending on parameter calibration.
 
-**Research question (RQ-A):** At equal monthly intervention effort (cats processed per month), which strategy — TNR or culling — produces the lowest cumulative prey-years lost compared to a no-cat baseline, over a 10-year horizon?
+**Framing.** At matched monthly intervention effort, culling will inevitably produce lower cumulative prey mortality than TNR because culling removes hunters while TNR keeps them alive (sterilised cats continue hunting). The direction is predictable from first principles. The question of research interest is not the direction but the **magnitude**: how much more TNR effort is required to close that wildlife gap, and does the required effort multiplier change with ecological context (immigration pressure, food availability)?
 
-**Primary outcome metric:** integrated prey-years lost vs no-cat baseline (area between actual prey trajectory and the all-prey-surviving reference). Monotonic in harm; lower is better for conservation. Secondary metric: cumulative cat-caused prey deaths.
+**Research question (RQ-A, narrow):** How many cats per month must a TNR program process to match the 10-year cumulative wildlife outcome (cumulative prey predation events) of a culling program processing 20 cats/month? Does this "TNR effort multiplier" depend on immigration pressure and food availability?
+
+**Primary outcome metric:** cumulative prey predation events over 120 months (direct count of cat-caused prey deaths). The multiplier is derived post-hoc as `smallest N such that median(TNR-kills at effort N) ≤ median(cull-kills at effort 20)`, divided by 20.
+
+**Three possible answer shapes, each informative:**
+
+1. **Finite multiplier.** TNR achieves equivalent wildlife outcomes at `N×` the effort of culling. Quantitative policy-relevant answer (e.g., "TNR needs 2.5× culling's effort").
+2. **No achievable multiplier (TNR floor exceeds culling's output).** No TNR effort within the achievable range closes the gap, because sterilised cats continue hunting throughout their natural lifespan (average ~3 years post-sterilisation). This would be a structural finding about an inherent limit of TNR.
+3. **Near-1× multiplier.** TNR and culling produce near-equivalent wildlife outcomes because culling's advantage is offset by immigrant backfill. Would overturn the naive intuition.
+
+**Secondary metric:** cumulative prey-years lost vs no-cat baseline, retained as a monotonic-in-harm sanity check and for cross-comparison with the predation-count metric.
 
 **Validation patterns.** The following should emerge from agent interactions:
 
@@ -300,15 +310,21 @@ Costs per Benka et al. (2022). Reported alongside ecological outcomes.
 Three experiments, each directly tied to RQ-A.
 
 **Experiment 1 — Matched-effort comparison (primary).**
-Sweep `cats_processed_per_month` from 0 to 40 in steps of 5. At each level, run two strategies (TNR, cull). 30 replicates each. 2 × 9 × 30 = 540 runs. Primary output: two curves of prey-years-lost vs effort.
+Sweep `cats_processed_per_month` from 0 to 40 in steps of 5. At each level, run two strategies (TNR, cull). 30 replicates each. 2 × 9 × 30 = 540 runs. Primary output: cumulative prey predation events (and prey-years-lost as secondary) at each (strategy, effort) point.
+
+**Post-hoc multiplier derivation.** From the Exp1 output:
+1. Compute `T = median(cumulative-prey-deaths | strategy=cull, effort=20)` across replicates. This is the reference wildlife outcome.
+2. For each TNR effort level `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`, compute `K_N = median(cumulative-prey-deaths | strategy=tnr, effort=N)`.
+3. Find smallest `N*` such that `K_{N*} ≤ T`. If no such `N*` exists in the sweep range, report "no equivalence achievable at effort ≤ 40 cats/month" (Answer shape 2 above).
+4. Report multiplier = `N* / 20`.
 
 **Experiment 2 — Immigration pressure sensitivity.**
-Repeat Experiment 1 at `base_immigration` ∈ {2, 6, 15}. Tests whether the TNR-vs-culling answer shifts in isolated vs connected districts.
+Repeat Experiment 1 at `base_immigration` ∈ {2, 6, 15}. For each immigration level, derive the TNR effort multiplier using the same post-hoc procedure. Expected pattern: multiplier may shrink as immigration rises (culling's benefit is offset by immigrant backfill, so TNR looks relatively more competitive).
 
 **Experiment 3 — Feeding-ban sensitivity.**
-Repeat Experiment 1 at `food_multiplier` ∈ {0.3, 0.7, 1.0}. Tests whether reducing food availability (modelling dumpster-securing or feeding bans) shifts the comparison.
+Repeat Experiment 1 at `food_multiplier` ∈ {0.3, 0.7, 1.0}. For each food level, derive the TNR effort multiplier. Expected pattern: multiplier may rise under feeding bans (fewer total cats, each cat removal matters more, so culling's lead expands).
 
-Statistical analysis: median and interquartile range across replicates. Non-parametric comparisons (Mann-Whitney U or Kruskal-Wallis).
+Statistical analysis: median and interquartile range across replicates. The multiplier is derived from the median trajectories at each effort level. Confidence in the multiplier is bounded by the IQR overlap of adjacent effort levels (if adjacent IQRs overlap heavily, the multiplier estimate is uncertain and should be reported as a range rather than a point value).
 
 ---
 

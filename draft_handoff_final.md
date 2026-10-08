@@ -8,11 +8,21 @@ This document captures the design decisions, research question, and model specif
 
 ## 1. Project Overview
 
-### Research question (RQ-A)
+### Research question (RQ-A, narrow)
 
-> **At equal monthly intervention effort (cats processed per month), which strategy — TNR or culling — produces the lowest cumulative prey-years lost compared to a no-cat baseline, over a 10-year horizon?**
+> **How many cats per month must a TNR program process to match the 10-year cumulative wildlife outcome (cumulative prey predation events) of a culling program processing 20 cats/month? Does this "TNR effort multiplier" depend on immigration pressure and food availability?**
 
-**Primary outcome metric:** integrated prey-years lost vs a no-cat baseline (area between the actual prey trajectory and the all-prey-surviving reference). Monotonic in harm; lower is better. Secondary: cumulative prey deaths.
+**Why narrow this way.** Teacher feedback highlighted that the original "which strategy produces lower prey mortality at matched effort" question has a predictable direction (culling wins because sterilised cats continue hunting). The narrowed question explicitly accepts that direction and asks about the **magnitude** of the TNR effort penalty — a quantity that genuinely requires simulation to answer.
+
+**Primary outcome metric:** cumulative prey predation events over 120 months. The TNR effort multiplier is derived post-hoc as `smallest N such that TNR @ N produces ≤ cull @ 20 kills` divided by 20.
+
+**Three possible answer shapes:**
+
+1. **Finite multiplier** (e.g., 2.5×) — TNR achieves equivalence at that factor of extra effort. Quantitative policy answer.
+2. **No achievable multiplier** — TNR cannot close the gap within the sweep range because sterilised cats keep hunting throughout their lifespan. Structural finding about an inherent TNR limitation.
+3. **Near-1× multiplier** — strategies are near-equivalent because immigration offsets culling. Overturns intuition.
+
+**Secondary metric:** prey-years lost vs no-cat baseline, retained for cross-comparison.
 
 ### Why this question matters
 
@@ -131,7 +141,7 @@ Total: 21 parameters.
 
 Three experiments, all answering RQ-A directly:
 
-1. **Matched-effort comparison** (sweep `cats_processed_per_month` 0–40; two strategies TNR vs cull; 30 reps).
+1. **Matched-effort comparison** (sweep `cats_processed_per_month` 0–40; two strategies TNR vs cull; 30 reps). Headline post-hoc analysis: compute the TNR effort multiplier that matches culling @ 20.
 2. **Immigration pressure sensitivity** (repeat Exp 1 at `base_immigration` ∈ {2, 6, 15}).
 3. **Feeding-ban sensitivity** (repeat Exp 1 at `food_multiplier` ∈ {0.3, 0.7, 1.0}).
 

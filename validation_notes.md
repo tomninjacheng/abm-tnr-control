@@ -73,11 +73,29 @@ What should **always** match:
 | Prey-years lost | |
 | Cumulative culled | |
 
-## Ordering check
+## Ordering check (model sanity)
 
 Prey-years lost: cull ___ < TNR ___ < unmanaged ___
+Cumulative prey predation: cull ___ < TNR ___ < unmanaged ___
 
-If this holds qualitatively, V1 is validated. If not, debug the mechanism breaking the ordering before running Experiment 1.
+If both orderings hold qualitatively, the model is behaving sensibly. If not, debug before running Experiment 1.
+
+## Post-hoc multiplier analysis (headline finding)
+
+After the Experiment 1 BehaviorSpace run completes, open the CSV in Python/R/Excel and compute:
+
+1. `T = median(cumulative-prey-deaths | strategy=cull, effort=20)` across the 30 replicates.
+2. For each TNR effort `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`:
+   - `K_N = median(cumulative-prey-deaths | strategy=tnr, effort=N)`.
+3. Find smallest `N*` such that `K_{N*} ≤ T`.
+4. Report the **TNR effort multiplier = `N* / 20`**.
+
+Report possibilities:
+- Clean multiplier (e.g., N* = 50, multiplier = 2.5×): "TNR needs 2.5× culling's effort for equivalent wildlife outcomes."
+- No matching N* in the sweep: "TNR does not match culling at any effort level up to 40 cats/month; the TNR floor exceeds culling's output by X%."
+- N* ≤ 20: "TNR achieves equivalence at or below culling's reference effort — strategies are near-equivalent at baseline."
+
+Repeat the derivation across the three immigration levels (`base_immigration` ∈ {2, 6, 15}, Experiment 2) and three food levels (`food_multiplier` ∈ {0.3, 0.7, 1.0}, Experiment 3) to produce the sensitivity story.
 
 ## Observations / issues found
 

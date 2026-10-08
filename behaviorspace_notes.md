@@ -84,13 +84,36 @@ show (word count cats " cats, " count preys " preys, " prey-years-lost " deficit
 
 Both runs must produce bit-identical output. If not, there's a hidden source of non-determinism (unlikely with the current code, but worth confirming before running 810 replicates).
 
-## Primary analysis plan
+## Primary analysis plan — TNR effort multiplier
 
-Load the CSV into Python / R / Excel. Group by `(strategy, cats-processed-per-month)`:
+The headline finding is a single multiplier that quantifies "how much extra effort TNR needs to match culling's wildlife outcome."
 
-- Compute **median** and **interquartile range (IQR)** of `prey-years-lost` across the 30 replicates.
-- Plot two curves (one per strategy): x = effort, y = median prey-years-lost, with IQR shaded.
-- For the headline answer to RQ-A: compare TNR vs cull at each effort level; non-parametric Mann-Whitney U for significance.
+**Procedure (post-hoc on Exp1 CSV):**
+
+1. Reference target: `T = median(cumulative-prey-deaths | strategy=cull, effort=20, over 30 reps)`.
+2. TNR trajectory: for each `N ∈ {5, 10, 15, 20, 25, 30, 35, 40}`, compute `K_N = median(cumulative-prey-deaths | strategy=tnr, effort=N)`.
+3. Multiplier `M = N* / 20` where `N*` is the smallest `N` with `K_N ≤ T`.
+4. Report `M`, or "no N* in sweep range" if TNR never catches up.
+
+**Secondary analyses:**
+
+- Plot two curves (TNR, cull): x = effort, y = median cumulative-prey-deaths, with IQR shaded. Visualise where the curves cross or whether TNR ever reaches culling's floor.
+- Same plot for `prey-years-lost` as a sanity check (same ordering expected).
+- Report median and IQR for cumulative-prey-deaths at each (strategy, effort) point.
+- Non-parametric Mann-Whitney U at each effort level for formal TNR-vs-cull significance.
+
+**Sensitivity across experiments:**
+
+- Repeat the multiplier derivation separately for each `base_immigration ∈ {2, 6, 15}` level in Exp2.
+- Repeat for each `food_multiplier ∈ {0.3, 0.7, 1.0}` in Exp3.
+- Report the multiplier as a function of (base_immigration, food_multiplier) — this is the headline sensitivity story.
+
+**Expected scaling patterns to look for:**
+
+- Multiplier *shrinks* as `base_immigration` rises: culling's benefit is offset by immigrants, so TNR looks relatively more competitive.
+- Multiplier *rises* as `food_multiplier` falls: fewer total cats mean each cat removal matters more, widening culling's lead.
+
+If these patterns hold, the sensitivity story is coherent and defensible. If they're reversed, that's a signal to re-examine the mechanism (likely food-driven immigration not firing strongly enough).
 
 ## File naming convention (suggested)
 
