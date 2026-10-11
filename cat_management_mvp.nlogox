@@ -30,14 +30,13 @@ globals [
   d-adult-prey            ;; monthly death prob for prey age >= 2 (default 0.05)
 
   ;; --- internal state / counters ---
-  current-immigration-rate
-  immigrants-this-month
-  prey-deaths-this-month
-  cumulative-prey-deaths
-  cumulative-tnr-count
-  cumulative-cull-count
-  prey-years-lost
-  prey-baseline
+  current-immigration-rate    ;; mean λ for Poisson immigration draw this tick
+  immigrants-this-month       ;; integer draw from random-poisson(λ); for live monitor
+  prey-deaths-this-month      ;; resets each tick in predate; for live monitor
+  cumulative-prey-deaths      ;; NUMERATOR of cost(N) — never resets within a run
+  cumulative-tnr-count        ;; total sterilisations; reported for interpretation
+  cumulative-cull-count       ;; DENOMINATOR of cost(N); incremented only under cull strategy
+  prey-years-lost             ;; secondary metric: integrated deficit vs initial-prey-population
 ]
 
 breed [cats cat]
@@ -73,23 +72,35 @@ to setup
 end
 
 to setup-globals
-  ;; Fixed parameters absorbed into "effective" rates (see ODD §4 Set B rationale)
-  set territory-radius 3
-  set food-consumption 1.0
-  set predation-radius 1
-  set prey-search-radius 2
+  ;; ----------------------------------------------------------------
+  ;; SPATIAL-SCALE PARAMETERS (grid: 50x50 cells of 50m each = 2.5km x 2.5km)
+  ;; ----------------------------------------------------------------
+  set territory-radius 3        ;; ~150m monthly food-search; urban foraging range
+  set food-consumption 1.0      ;; nominal unit; what matters is ratio food-current/food-capacity
+  set predation-radius 1        ;; Moore 3x3 block; cat within 50m is "adjacent" for predation
+  set prey-search-radius 2      ;; ~100m; matches Fairy-wren urban territory ~1.4ha (Parsons 2007)
 
-  set p-birth 0.17
-  set litter-size 4
-  set d-juvenile-cat 0.25
-  set d-adult-cat 0.025
+  ;; ----------------------------------------------------------------
+  ;; CAT DEMOGRAPHIC RATES — anchored to Denny & Dickman (2010)
+  ;; "Review of Cat Ecology and Management Strategies in Australia", Invasive Animals CRC
+  ;; ----------------------------------------------------------------
+  set p-birth 0.17              ;; → 2.04 litters/yr; Jones & Coman 1982a: 2/yr (D&D §3.5 p.17)
+  set litter-size 4             ;; Deag 2000: 3.88; prenatal 4.1-4.7 across Aus studies (D&D p.18)
+  set d-juvenile-cat 0.25       ;; (1-0.25)^6 = 17.8% to 6mo; Mirmovitch 1995 Jerusalem: 16% (D&D p.18)
+  set d-adult-cat 0.025         ;; mean adult life 1/0.025 = 40mo = 3.3yr; Warner 1985 (D&D p.19)
 
-  set p-prey-birth 0.25
-  set prey-litter-size 2
-  set d-juvenile-prey 0.30
-  set d-adult-prey 0.05
+  ;; ----------------------------------------------------------------
+  ;; PREY DEMOGRAPHIC RATES — Superb Fairy-wren (Malurus cyaneus)
+  ;; Rowley 1965 Emu 64(4) + Russell & Rowley 1993 Aus J Zoology 41(5)
+  ;; ----------------------------------------------------------------
+  set p-prey-birth 0.25         ;; ~6 offspring/F/yr; Rowley 1965: 3 broods × 3.2 eggs × ~60% fledging
+  set prey-litter-size 2        ;; biology: 3.2 eggs/clutch × ~60% fledging ≈ 2 fledglings
+  set d-juvenile-prey 0.30      ;; absorbs nest predation + non-cat mortality on nestlings
+  set d-adult-prey 0.05         ;; annual survival 0.54; Russell & Rowley 1993 Splendid: 0.59-0.70
 
-  ;; Internal counters
+  ;; ----------------------------------------------------------------
+  ;; INTERNAL COUNTERS — zeroed defensively (clear-all also handles this)
+  ;; ----------------------------------------------------------------
   set current-immigration-rate 0
   set immigrants-this-month 0
   set prey-deaths-this-month 0
@@ -97,7 +108,6 @@ to setup-globals
   set cumulative-tnr-count 0
   set cumulative-cull-count 0
   set prey-years-lost 0
-  set prey-baseline initial-prey-population
 end
 
 to setup-patches
@@ -184,7 +194,10 @@ to go
 end
 
 to tally
-  let deficit max (list 0 (prey-baseline - count preys))
+  ;; Secondary metric: integrated deficit of prey below the setup-time count.
+  ;; max(…) floors the deficit at zero so overshoot above initial-prey-population doesn't
+  ;; subtract from the accumulated deficit.
+  let deficit max (list 0 (initial-prey-population - count preys))
   set prey-years-lost prey-years-lost + deficit
 end
 
